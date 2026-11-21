@@ -1,0 +1,117 @@
+# Data Model (ER Diagram) v0.3
+
+Postgres assumed. NOT in the DB: presence (Redis/memory), chat (Redis, capped list + TTL), host role (derived from presence).
+
+```mermaid
+erDiagram
+    USERS ||--o{ ROOMS : owns
+    USERS ||--o{ ROOM_MEMBERS : has
+    ROOMS ||--o{ ROOM_MEMBERS : has
+    ROOMS ||--o{ INVITE_LINKS : has
+    ROOMS ||--|| ROOM_TIMERS : has
+    ROOMS ||--o{ AGENDA_ITEMS : has
+    SCENES ||--o{ ROOMS : themes
+    USERS ||--o{ STUDY_SESSIONS : logs
+    ROOMS |o--o{ STUDY_SESSIONS : "happened in"
+    USERS ||--|| USER_SETTINGS : has
+    USERS ||--o{ NOTES : writes
+
+    USERS {
+        uuid id PK
+        string email UK
+        string password_hash
+        string display_name
+        string timezone "e.g. Asia/Kolkata, for streaks"
+        timestamp created_at
+    }
+    USER_SETTINGS {
+        uuid user_id PK, FK
+        jsonb widget_layout "positions, open/closed"
+        bool ambient_enabled
+        float ambient_volume
+    }
+    SCENES {
+        uuid id PK
+        string name
+        string category
+        string asset_url
+        string thumbnail_url
+        string ambient_audio_url "optional loop"
+        string license_note
+    }
+    ROOMS {
+        uuid id PK
+        uuid owner_id FK "up to 5 rooms per user (app rule)"
+        uuid scene_id FK
+        string name
+        int max_members "default 50"
+        int focus_min "default 25"
+        int short_break_min "default 5"
+        int long_break_min "default 15"
+        int cycles_before_long "default 4"
+        timestamp created_at
+    }
+    ROOM_MEMBERS {
+        uuid room_id PK, FK "ON DELETE CASCADE"
+        uuid user_id PK, FK
+        timestamp joined_at
+        timestamp banned_at "null unless removed"
+    }
+    INVITE_LINKS {
+        uuid id PK
+        uuid room_id FK "ON DELETE CASCADE"
+        string token_hash UK "hash, not raw token"
+        timestamp created_at
+        timestamp expires_at
+        timestamp revoked_at
+    }
+    ROOM_TIMERS {
+        uuid room_id PK, FK "ON DELETE CASCADE"
+        string mode "focus | short_break | long_break | idle"
+        timestamp started_at
+        int duration_ms
+        timestamp paused_at "null if running"
+        int accumulated_ms "elapsed before pauses"
+        int cycle_count
+        int version "bump on every change, helps clients ignore stale updates"
+    }
+    AGENDA_ITEMS {
+        uuid id PK
+        uuid room_id FK "ON DELETE CASCADE"
+        string text
+        int position
+        bool done
+        timestamp created_at
+    }
+    STUDY_SESSIONS {
+        uuid id PK
+        uuid user_id FK
+        uuid room_id FK "nullable, ON DELETE SET NULL"
+        timestamp started_at
+        timestamp ended_at
+        int focused_seconds
+    }
+    NOTES {
+        uuid id PK
+        uuid user_id FK
+        string body
+        timestamp updated_at
+    }
+```
+
+## What changed from v0.1
+- **Removed:** `MESSAGES` (chat is Redis), `ACTIVE_TIMERS` (timer now belongs to the room), `SOUND_LAYERS`, `SOUND_PRESETS`, `PRESET_LAYERS` (mixer is a later version), `is_default`, `is_private`, `deleted_at`, `role` on members
+- **Added:** `ROOM_TIMERS`, `AGENDA_ITEMS`, `NOTES`, timer durations on `ROOMS`
+- **`ROOMS.owner_id` is no longer unique:** a user can own several rooms (limit 5, checked in a transaction). Zero is allowed after deletes.
+- **Roles:** owner = `ROOMS.owner_id`. Host is derived from presence at runtime, so it is not a column.
+
+## Design notes
+1. **Timer = timestamps.** Remaining = `duration - (now - started_at) - accumulated pauses`. Late joiners, refreshes and second devices all compute the same answer. `version` stops an old update from overwriting a newer one after a reconnect.
+2. **Timer writes are cheap and rare.** Only state *changes* (start, pause, reset, skip) are written, never per-second ticks.
+3. **Study sessions are written per member** when a focus block completes while they were present. Stats and streaks are computed from this table with the user's timezone; no streak column.
+4. **Delete rules:** room deletion cascades to members, invites, timer, agenda. Sessions survive with `room_id = null`.
+5. **Member cap (50)** must be enforced in a transaction, because two people can join at the same instant.
+6. **A default room is created at signup** in the same transaction as the user, together with a `ROOM_TIMERS` row and a default scene. Every later room gets its own timer row the same way. "Closed" is not a column: it means no members and no active invite link.
+7. **Indexes to add:** `STUDY_SESSIONS (user_id, started_at)`, `AGENDA_ITEMS (room_id, position)`, `INVITE_LINKS (token_hash)`, `ROOMS (owner_id)`, `ROOM_MEMBERS (user_id)` (to list the rooms I belong to).
+8. **The active room is not in the database.** Which room a user is currently in lives in Redis presence (`userId -> activeRoomId`). Joining a second room removes the first. This also stops one focus block being credited in two rooms.
+9. **Room limit (5 per owner)** must be checked inside a transaction when creating a room, because two creates can race.
