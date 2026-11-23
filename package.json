@@ -6,7 +6,7 @@
     "node": ">=22 <23"
   },
   "scripts": {
-    "build": "pnpm -r build",
+    "build": "pnpm --filter @nekostudy/shared build && pnpm --filter @nekostudy/api build && pnpm --filter @nekostudy/web build",
     "dev": "pnpm --parallel -r dev",
     "typecheck": "pnpm -r typecheck"
   },
