@@ -8,7 +8,7 @@
   "scripts": {
     "build": "pnpm --filter @nekostudy/shared build && pnpm --filter @nekostudy/api build && pnpm --filter @nekostudy/web build",
     "dev": "pnpm --parallel -r dev",
-    "typecheck": "pnpm -r typecheck"
+    "typecheck": "pnpm --filter @nekostudy/shared build && pnpm --filter @nekostudy/api typecheck && pnpm --filter @nekostudy/web typecheck"
   },
   "devDependencies": {
     "typescript": "5.9.3"
