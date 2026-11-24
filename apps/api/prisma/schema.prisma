@@ -1,4 +1,3 @@
-
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
@@ -18,10 +17,10 @@ model User {
   passwordHash String   @map("password_hash")
   displayName  String   @map("display_name")
   timezone     String
-  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   settings        UserSettings?
-  ownedRooms      Room[]          @relation("RoomOwner")
+  ownedRooms      Room[]         @relation("RoomOwner")
   roomMemberships RoomMember[]
   studySessions   StudySession[]
   notes           Note[]
@@ -45,13 +44,13 @@ model UserSettings {
 // --------------------------------------------------
 
 model Scene {
-  id               String  @id @default(uuid()) @db.Uuid
-  name             String
-  category         String
-  assetUrl         String  @map("asset_url")
-  thumbnailUrl     String  @map("thumbnail_url")
-  ambientAudioUrl  String? @map("ambient_audio_url")
-  licenseNote      String  @map("license_note")
+  id              String  @id @default(uuid()) @db.Uuid
+  name            String
+  category        String
+  assetUrl        String  @map("asset_url")
+  thumbnailUrl    String  @map("thumbnail_url")
+  ambientAudioUrl String? @map("ambient_audio_url")
+  licenseNote     String  @map("license_note")
 
   rooms Room[]
 
@@ -63,23 +62,23 @@ model Scene {
 // --------------------------------------------------
 
 model Room {
-  id              String   @id @default(uuid()) @db.Uuid
-  ownerId         String   @map("owner_id") @db.Uuid
-  sceneId         String   @map("scene_id") @db.Uuid
-  name            String
-  maxMembers      Int      @default(50) @map("max_members")
-  focusMin        Int      @default(25) @map("focus_min")
-  shortBreakMin   Int      @default(5) @map("short_break_min")
-  longBreakMin    Int      @default(15) @map("long_break_min")
-  cyclesBeforeLong Int     @default(4) @map("cycles_before_long")
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  id               String   @id @default(uuid()) @db.Uuid
+  ownerId          String   @map("owner_id") @db.Uuid
+  sceneId          String   @map("scene_id") @db.Uuid
+  name             String
+  maxMembers       Int      @default(50) @map("max_members")
+  focusMin         Int      @default(25) @map("focus_min")
+  shortBreakMin    Int      @default(5) @map("short_break_min")
+  longBreakMin     Int      @default(15) @map("long_break_min")
+  cyclesBeforeLong Int      @default(4) @map("cycles_before_long")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  owner        User         @relation("RoomOwner", fields: [ownerId], references: [id], onDelete: Restrict)
-  scene        Scene        @relation(fields: [sceneId], references: [id], onDelete: Restrict)
-  members      RoomMember[]
-  inviteLinks  InviteLink[]
-  timer        RoomTimer?
-  agendaItems  AgendaItem[]
+  owner         User           @relation("RoomOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  scene         Scene          @relation(fields: [sceneId], references: [id], onDelete: Restrict)
+  members       RoomMember[]
+  inviteLinks   InviteLink[]
+  timer         RoomTimer?
+  agendaItems   AgendaItem[]
   studySessions StudySession[]
 
   @@index([ownerId])
@@ -93,8 +92,8 @@ model Room {
 model RoomMember {
   roomId   String    @map("room_id") @db.Uuid
   userId   String    @map("user_id") @db.Uuid
-  joinedAt DateTime  @default(now()) @map("joined_at") @db.Timestamp(6)
-  bannedAt DateTime? @map("banned_at") @db.Timestamp(6)
+  joinedAt DateTime  @default(now()) @map("joined_at") @db.Timestamptz(6)
+  bannedAt DateTime? @map("banned_at") @db.Timestamptz(6)
 
   room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -112,9 +111,9 @@ model InviteLink {
   id        String    @id @default(uuid()) @db.Uuid
   roomId    String    @map("room_id") @db.Uuid
   tokenHash String    @unique @map("token_hash")
-  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  expiresAt DateTime  @map("expires_at") @db.Timestamp(6)
-  revokedAt DateTime? @map("revoked_at") @db.Timestamp(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz(6)
 
   room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
 
@@ -127,10 +126,10 @@ model InviteLink {
 
 model RoomTimer {
   roomId        String    @id @map("room_id") @db.Uuid
-  mode          String    // focus | short_break | long_break | idle
-  startedAt     DateTime  @map("started_at") @db.Timestamp(6)
-  durationMs    Int       @map("duration_ms")
-  pausedAt      DateTime? @map("paused_at") @db.Timestamp(6)
+  mode          String // focus | short_break | long_break | idle
+  startedAt     DateTime? @map("started_at") @db.Timestamptz(6)
+  durationMs    Int?      @map("duration_ms")
+  pausedAt      DateTime? @map("paused_at") @db.Timestamptz(6)
   accumulatedMs Int       @map("accumulated_ms")
   cycleCount    Int       @map("cycle_count")
   version       Int
@@ -150,7 +149,7 @@ model AgendaItem {
   text      String
   position  Int
   done      Boolean
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
 
@@ -166,8 +165,8 @@ model StudySession {
   id             String   @id @default(uuid()) @db.Uuid
   userId         String   @map("user_id") @db.Uuid
   roomId         String?  @map("room_id") @db.Uuid
-  startedAt      DateTime @map("started_at") @db.Timestamp(6)
-  endedAt        DateTime @map("ended_at") @db.Timestamp(6)
+  startedAt      DateTime @map("started_at") @db.Timestamptz(6)
+  endedAt        DateTime @map("ended_at") @db.Timestamptz(6)
   focusedSeconds Int      @map("focused_seconds")
 
   user User  @relation(fields: [userId], references: [id], onDelete: Restrict)
@@ -185,7 +184,7 @@ model Note {
   id        String   @id @default(uuid()) @db.Uuid
   userId    String   @map("user_id") @db.Uuid
   body      String
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
