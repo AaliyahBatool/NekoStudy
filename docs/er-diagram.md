@@ -22,13 +22,13 @@ erDiagram
         string password_hash
         string display_name
         string timezone "e.g. Asia/Kolkata, for streaks"
-        timestamp created_at
+        timestamptz created_at
     }
     USER_SETTINGS {
         uuid user_id PK, FK
-        jsonb widget_layout "positions, open/closed"
-        bool ambient_enabled
-        float ambient_volume
+        jsonb widget_layout "positions, open/closed; default {}"
+        bool ambient_enabled "default false"
+        float ambient_volume "default 0.5"
     }
     SCENES {
         uuid id PK
@@ -49,28 +49,28 @@ erDiagram
         int short_break_min "default 5"
         int long_break_min "default 15"
         int cycles_before_long "default 4"
-        timestamp created_at
+        timestamptz created_at
     }
     ROOM_MEMBERS {
         uuid room_id PK, FK "ON DELETE CASCADE"
         uuid user_id PK, FK
-        timestamp joined_at
-        timestamp banned_at "null unless removed"
+        timestamptz joined_at
+        timestamptz banned_at "null unless removed"
     }
     INVITE_LINKS {
         uuid id PK
         uuid room_id FK "ON DELETE CASCADE"
         string token_hash UK "hash, not raw token"
-        timestamp created_at
-        timestamp expires_at
-        timestamp revoked_at
+        timestamptz created_at
+        timestamptz expires_at
+        timestamptz revoked_at
     }
     ROOM_TIMERS {
         uuid room_id PK, FK "ON DELETE CASCADE"
         string mode "focus | short_break | long_break | idle"
-        timestamp started_at
-        int duration_ms
-        timestamp paused_at "null if running"
+        timestamptz started_at "null while idle"
+        int duration_ms "null while idle"
+        timestamptz paused_at "null if running"
         int accumulated_ms "elapsed before pauses"
         int cycle_count
         int version "bump on every change, helps clients ignore stale updates"
@@ -81,21 +81,21 @@ erDiagram
         string text
         int position
         bool done
-        timestamp created_at
+        timestamptz created_at
     }
     STUDY_SESSIONS {
         uuid id PK
         uuid user_id FK
         uuid room_id FK "nullable, ON DELETE SET NULL"
-        timestamp started_at
-        timestamp ended_at
+        timestamptz started_at
+        timestamptz ended_at
         int focused_seconds
     }
     NOTES {
         uuid id PK
         uuid user_id FK
         string body
-        timestamp updated_at
+        timestamptz updated_at
     }
 ```
 
@@ -115,3 +115,5 @@ erDiagram
 7. **Indexes to add:** `STUDY_SESSIONS (user_id, started_at)`, `AGENDA_ITEMS (room_id, position)`, `INVITE_LINKS (token_hash)`, `ROOMS (owner_id)`, `ROOM_MEMBERS (user_id)` (to list the rooms I belong to).
 8. **The active room is not in the database.** Which room a user is currently in lives in Redis presence (`userId -> activeRoomId`). Joining a second room removes the first. This also stops one focus block being credited in two rooms.
 9. **Room limit (5 per owner)** must be checked inside a transaction when creating a room, because two creates can race.
+10. **Idle timer rule.** A new room's `ROOM_TIMERS` row is created with `mode = idle`, `started_at = null`, `duration_ms = null`, `accumulated_ms = 0`, `cycle_count = 0`, `version = 0`. `started_at` and `duration_ms` are set on the first `start` and are both null again after `reset` back to idle. `timerService` must treat `mode = idle` as "no remaining time to compute" and never read `started_at` in that state.
+11. **Timestamps are `timestamptz`.** Every instant in the schema is stored with its timezone (UTC), matching ADR-003 (timer as server timestamps).

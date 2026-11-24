@@ -30,9 +30,9 @@ model User {
 
 model UserSettings {
   userId         String  @id @map("user_id") @db.Uuid
-  widgetLayout   Json    @map("widget_layout") @db.JsonB
-  ambientEnabled Boolean @map("ambient_enabled")
-  ambientVolume  Float   @map("ambient_volume") @db.DoublePrecision
+  widgetLayout   Json    @default("{}") @map("widget_layout") @db.JsonB
+  ambientEnabled Boolean @default(false) @map("ambient_enabled")
+  ambientVolume  Float   @default(0.5) @map("ambient_volume") @db.DoublePrecision
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

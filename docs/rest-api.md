@@ -90,7 +90,12 @@ Study sessions are **never created by the client**. The server writes them when 
 | GET | `/me/stats?range=today\|week\|month` | yes | `{ focusSeconds, sessions, streak: { current, longest }, byDay: [{ date, focusSeconds }] }` computed in the user's timezone |
 
 ### Health
-| GET | `/health` | no | `{ status: "ok" }` (add DB/Redis checks later) |
+| Method | Path | Auth | Notes | Returns |
+|---|---|---|---|---|
+| GET | `/health` | no | **Liveness:** the process is up. Checks no dependencies, so a database blip never makes a platform restart a healthy API. | 200 `{ status: "ok" }` |
+| GET | `/health/db` | no | **Readiness:** PostgreSQL is reachable (`SELECT 1`). Redis is added when `lib/redis.ts` exists. Failures are logged server-side, never returned to the client. | 200 `{ status: "ok", database: "connected" }` or 503 `{ status: "error", database: "disconnected" }` |
+
+Health endpoints are exempt from the standard error shape on purpose: monitors expect a simple status body.
 
 ## 4. Security notes
 
