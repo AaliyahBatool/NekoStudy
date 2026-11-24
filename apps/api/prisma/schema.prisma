@@ -1,0 +1,193 @@
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// --------------------------------------------------
+// USERS
+// --------------------------------------------------
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  displayName  String   @map("display_name")
+  timezone     String
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  settings        UserSettings?
+  ownedRooms      Room[]          @relation("RoomOwner")
+  roomMemberships RoomMember[]
+  studySessions   StudySession[]
+  notes           Note[]
+
+  @@map("users")
+}
+
+model UserSettings {
+  userId         String  @id @map("user_id") @db.Uuid
+  widgetLayout   Json    @map("widget_layout") @db.JsonB
+  ambientEnabled Boolean @map("ambient_enabled")
+  ambientVolume  Float   @map("ambient_volume") @db.DoublePrecision
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_settings")
+}
+
+// --------------------------------------------------
+// SCENES
+// --------------------------------------------------
+
+model Scene {
+  id               String  @id @default(uuid()) @db.Uuid
+  name             String
+  category         String
+  assetUrl         String  @map("asset_url")
+  thumbnailUrl     String  @map("thumbnail_url")
+  ambientAudioUrl  String? @map("ambient_audio_url")
+  licenseNote      String  @map("license_note")
+
+  rooms Room[]
+
+  @@map("scenes")
+}
+
+// --------------------------------------------------
+// ROOMS
+// --------------------------------------------------
+
+model Room {
+  id              String   @id @default(uuid()) @db.Uuid
+  ownerId         String   @map("owner_id") @db.Uuid
+  sceneId         String   @map("scene_id") @db.Uuid
+  name            String
+  maxMembers      Int      @default(50) @map("max_members")
+  focusMin        Int      @default(25) @map("focus_min")
+  shortBreakMin   Int      @default(5) @map("short_break_min")
+  longBreakMin    Int      @default(15) @map("long_break_min")
+  cyclesBeforeLong Int     @default(4) @map("cycles_before_long")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  owner        User         @relation("RoomOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  scene        Scene        @relation(fields: [sceneId], references: [id], onDelete: Restrict)
+  members      RoomMember[]
+  inviteLinks  InviteLink[]
+  timer        RoomTimer?
+  agendaItems  AgendaItem[]
+  studySessions StudySession[]
+
+  @@index([ownerId])
+  @@map("rooms")
+}
+
+// --------------------------------------------------
+// ROOM MEMBERS
+// --------------------------------------------------
+
+model RoomMember {
+  roomId   String    @map("room_id") @db.Uuid
+  userId   String    @map("user_id") @db.Uuid
+  joinedAt DateTime  @default(now()) @map("joined_at") @db.Timestamp(6)
+  bannedAt DateTime? @map("banned_at") @db.Timestamp(6)
+
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([roomId, userId])
+  @@index([userId])
+  @@map("room_members")
+}
+
+// --------------------------------------------------
+// INVITE LINKS
+// --------------------------------------------------
+
+model InviteLink {
+  id        String    @id @default(uuid()) @db.Uuid
+  roomId    String    @map("room_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  expiresAt DateTime  @map("expires_at") @db.Timestamp(6)
+  revokedAt DateTime? @map("revoked_at") @db.Timestamp(6)
+
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@map("invite_links")
+}
+
+// --------------------------------------------------
+// ROOM TIMERS
+// --------------------------------------------------
+
+model RoomTimer {
+  roomId        String    @id @map("room_id") @db.Uuid
+  mode          String    // focus | short_break | long_break | idle
+  startedAt     DateTime  @map("started_at") @db.Timestamp(6)
+  durationMs    Int       @map("duration_ms")
+  pausedAt      DateTime? @map("paused_at") @db.Timestamp(6)
+  accumulatedMs Int       @map("accumulated_ms")
+  cycleCount    Int       @map("cycle_count")
+  version       Int
+
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@map("room_timers")
+}
+
+// --------------------------------------------------
+// AGENDA ITEMS
+// --------------------------------------------------
+
+model AgendaItem {
+  id        String   @id @default(uuid()) @db.Uuid
+  roomId    String   @map("room_id") @db.Uuid
+  text      String
+  position  Int
+  done      Boolean
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@index([roomId, position])
+  @@map("agenda_items")
+}
+
+// --------------------------------------------------
+// STUDY SESSIONS
+// --------------------------------------------------
+
+model StudySession {
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  roomId         String?  @map("room_id") @db.Uuid
+  startedAt      DateTime @map("started_at") @db.Timestamp(6)
+  endedAt        DateTime @map("ended_at") @db.Timestamp(6)
+  focusedSeconds Int      @map("focused_seconds")
+
+  user User  @relation(fields: [userId], references: [id], onDelete: Restrict)
+  room Room? @relation(fields: [roomId], references: [id], onDelete: SetNull)
+
+  @@index([userId, startedAt])
+  @@map("study_sessions")
+}
+
+// --------------------------------------------------
+// NOTES
+// --------------------------------------------------
+
+model Note {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  body      String
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notes")
+}
