@@ -8,3 +8,10 @@ build/
 coverage/
 .turbo/
 .DS_Store
+
+apps/api/.agents/
+apps/api/.claude/
+apps/api/.cursor/
+apps/api/.devin/
+apps/api/.windsurf/
+apps/api/skills-lock.json
