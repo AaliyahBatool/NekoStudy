@@ -2,7 +2,7 @@
 
 A real-time, scene-based study app. Pick a calm full-screen scene, run a focus timer, and invite friends into your room to study together with shared sprints, a shared agenda and live status.
 
-> **Status: early development.** Planning is done (see [`docs/`](docs)); the foundation is being built. Nothing here is deployed yet.
+> **Status: early development.** Planning is done (see [`docs/`](docs)). The API skeleton runs locally (Express, Prisma schema and migrations, Redis, health checks, Socket.IO handshake, graceful shutdown). No product features yet, the frontend is not started, and nothing is deployed.
 
 ## Why it's different
 
@@ -40,12 +40,35 @@ docs/         SRS, data model, API specs, ADRs
 Requirements: Node 22 (see `.nvmrc`), pnpm 10.
 
 ```bash
+# 1. Configuration (Windows PowerShell: Copy-Item .env.example .env)
+cp .env.example .env        # then replace the placeholder secrets and passwords
+
+# 2. Postgres and Redis
+docker compose up -d
+docker compose ps           # both should show "healthy"
+
+# 3. Dependencies (also generates the Prisma client)
 pnpm install
 pnpm --filter @nekostudy/shared build
-pnpm typecheck
+
+# 4. Database
+cd apps/api
+pnpm exec prisma migrate deploy
+pnpm exec prisma db seed
+cd ../..
+
+# 5. Run
+pnpm --filter @nekostudy/api dev
 ```
 
-Postgres and Redis via Docker Compose, plus `pnpm dev`, will be added in the next phase.
+Check it: `GET http://localhost:4000/api/v1/health` should return `{ "status": "ok", "database": "connected", "redis": "connected" }`.
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /api/v1/health/live` | Liveness: the process is up |
+| `GET /api/v1/health` | Readiness: PostgreSQL and Redis reachable |
+
+Other useful commands: `pnpm typecheck`, `pnpm build`, `docker compose down` (keeps data), `docker compose down -v` (deletes data).
 
 ## Documentation
 
@@ -57,6 +80,13 @@ Postgres and Redis via Docker Compose, plus `pnpm dev`, will be added in the nex
 | [WebSocket events](docs/websocket-events.md) | Real-time event catalog, roles, sequences |
 | [ADRs](docs/adr) | Why each major decision was made |
 | [Setup checklist](docs/setup-checklist.md) | Build-order plan from empty repo to deployed skeleton |
+
+## Architecture rules
+
+- Controllers and socket handlers are thin: validate, call a service, respond. Business rules live in services.
+- One error handler; every error leaves the API as `{ error: { code, message, details } }`.
+- Only `config/env.ts` reads `process.env`; it validates and fails fast at startup.
+- The server is authoritative for time, host and membership (see [ADR-003](docs/adr/003-timer-timestamps.md), [ADR-005](docs/adr/005-derived-host.md)).
 
 ## Known limits
 

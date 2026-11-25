@@ -1,4 +1,3 @@
-
 import { createServer } from "node:http";
 
 import { Server as SocketIOServer } from "socket.io";
@@ -10,9 +9,36 @@ import { prisma } from "./lib/db.js";
 import { redis } from "./lib/redis.js";
 import { authenticateSocket } from "./socket/auth-middleware.js";
 
+import type {
+  ClientToServerEvents,
+  InterServerEvents,
+  ServerToClientEvents,
+} from "@nekostudy/shared";
+
+import type { SocketData } from "./types/socket.js";
+import { registerTimeSyncHandler } from "./socket/handlers/time-sync.js";
+import {
+  registerSocket,
+  unregisterSocket,
+} from "./services/presence/socket-registry.js";
+
+import { registerRoomJoinHandler } from "./socket/handlers/room-join.js";
+
+import {
+  startPresenceCleanupWorker,
+  stopPresenceCleanupWorker,
+} from "./services/presence/cleanup-worker.js";
+
+import { registerRoomLeaveHandler } from "./socket/handlers/room-leave.js";
+
 const server = createServer(app);
 
-const io = new SocketIOServer(server, {
+const io = new SocketIOServer<
+  ClientToServerEvents,
+  ServerToClientEvents,
+  InterServerEvents,
+  SocketData
+>(server, {
   cors: {
     origin: env.CLIENT_ORIGIN,
     credentials: true,
@@ -21,8 +47,86 @@ const io = new SocketIOServer(server, {
 
 io.use(authenticateSocket);
 
-let isShuttingDown = false;
+const pendingPresenceCleanup = new Set<Promise<void>>();
 
+io.on("connection", (socket) => {
+  const userId = socket.data.userId;
+
+  if (!userId) {
+    socket.disconnect(true);
+    return;
+  }
+
+  let registration: Promise<void> = Promise.resolve();
+
+  socket.on("disconnect", (reason) => {
+    const cleanup = registration
+      .catch(() => undefined)
+      .then(async () => {
+        const result = await unregisterSocket(userId, socket.id);
+
+        logger.debug(
+          {
+            userId,
+            socketId: socket.id,
+            lastSocket: result.lastSocket,
+            reason,
+          },
+          "Socket presence unregistered",
+        );
+      });
+
+    pendingPresenceCleanup.add(cleanup);
+
+    void cleanup
+      .catch((error: unknown) => {
+        logger.error(
+          { err: error, userId, socketId: socket.id },
+          "Failed to unregister socket presence",
+        );
+      })
+      .finally(() => {
+        pendingPresenceCleanup.delete(cleanup);
+      });
+  });
+
+  registration = (async () => {
+    await registerSocket(userId, socket.id);
+
+    // The socket might disconnect while Redis registration is pending.
+    if (!socket.connected) {
+      await unregisterSocket(userId, socket.id);
+      return;
+    }
+
+    // All tabs belonging to this user share a private Socket.IO room.
+    await socket.join(`user:${userId}`);
+
+    if (!socket.connected) {
+      await unregisterSocket(userId, socket.id);
+      return;
+    }
+
+    registerTimeSyncHandler(socket);
+    registerRoomJoinHandler(io, socket);
+    registerRoomLeaveHandler(io, socket);
+
+    logger.debug(
+      { userId, socketId: socket.id },
+      "Socket presence registered",
+    );
+  })();
+
+  void registration.catch((error: unknown) => {
+    logger.error(
+      { err: error, userId, socketId: socket.id },
+      "Socket initialization failed",
+    );
+
+    socket.disconnect(true);
+  });
+});
+let isShuttingDown = false;
 
 async function shutdown(signal: string): Promise<void> {
   if (isShuttingDown) return;
@@ -35,6 +139,8 @@ async function shutdown(signal: string): Promise<void> {
     process.exit(1);
   }, 10_000);
 
+  await stopPresenceCleanupWorker();
+
   try {
     // First close Socket.IO and the HTTP server.
     try {
@@ -46,6 +152,9 @@ async function shutdown(signal: string): Promise<void> {
       });
 
       logger.info("Socket.IO and HTTP server closed");
+      await Promise.allSettled([...pendingPresenceCleanup]);
+
+      logger.info("Pending socket presence cleanup completed");
     } catch (error) {
       logger.error({ err: error }, "Failed to close HTTP server");
       process.exitCode = 1;
@@ -62,7 +171,10 @@ async function shutdown(signal: string): Promise<void> {
     if (prismaResult.status === "fulfilled") {
       logger.info("PostgreSQL connection closed");
     } else {
-      logger.error({ err: prismaResult.reason }, "Failed to disconnect PostgreSQL");
+      logger.error(
+        { err: prismaResult.reason },
+        "Failed to disconnect PostgreSQL",
+      );
       process.exitCode = 1;
     }
 
@@ -75,9 +187,10 @@ async function shutdown(signal: string): Promise<void> {
   } finally {
     clearTimeout(forceExitTimer);
     logger.info("Shutdown complete");
+
+    process.exit(process.exitCode ?? 0);
   }
 }
-
 
 // Handle terminal shutdown and deployment termination signals.
 process.once("SIGINT", () => {
@@ -96,29 +209,19 @@ server.on("error", (error) => {
 async function startServer(): Promise<void> {
   try {
     // Connect dependencies before accepting requests.
-    await Promise.all([
-      prisma.$connect(),
-      redis.connect(),
-    ]);
+    await Promise.all([prisma.$connect(), redis.connect()]);
 
     logger.info("PostgreSQL and Redis connected");
 
+    startPresenceCleanupWorker(io);
+
     server.listen(env.PORT, () => {
-      logger.info(
-        { port: env.PORT },
-        "NekoStudy API server is running",
-      );
+      logger.info({ port: env.PORT }, "NekoStudy API server is running");
     });
   } catch (error) {
-    logger.fatal(
-      { err: error },
-      "Failed to connect application dependencies",
-    );
+    logger.fatal({ err: error }, "Failed to connect application dependencies");
 
-    await Promise.allSettled([
-      prisma.$disconnect(),
-      redis.quit(),
-    ]);
+    await Promise.allSettled([prisma.$disconnect(), redis.quit()]);
 
     process.exitCode = 1;
   }

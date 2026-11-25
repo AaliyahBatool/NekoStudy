@@ -45,7 +45,7 @@ Base path: `/api/v1`. JSON in, JSON out. Companion to `websocket-events.md`.
 |---|---|---|---|---|
 | GET | `/rooms` | yes | rooms I own and rooms I belong to, with scene and member count | `{ owned: [...], member: [...] }` |
 | PATCH | `/rooms/:id` | owner | `{ sceneId?, name?, focusMin?, shortBreakMin?, longBreakMin?, cyclesBeforeLong? }`. Bounds-checked. If people are connected, the service also broadcasts (same code as the socket path). | room |
-| POST | `/rooms/:id/close` | owner | removes all members, revokes the invite link, stops the timer, broadcasts `room:closed`. Scene, durations and agenda are kept. Creating a new link reopens the room. | 204 |
+| POST | `/rooms/:id/close` | owner | removes all members except the owner, revokes the invite link, stops the timer, broadcasts `room:closed`. Scene, durations and agenda are kept. Creating a new link reopens the room. | 204 |
 | DELETE | `/rooms/:id` | owner | deletes the room (cascade: members, links, timer, agenda), broadcasts `room:deleted`. Study history is kept. UI must ask for confirmation. | 204 |
 | POST | `/rooms` | yes | `{ name, sceneId }` creates a room with its own timer. 409 `ROOM_LIMIT` if you already own 5. Limit checked in a transaction. | 201 room |
 | GET | `/rooms/:id` | member | 403 if not a member, 404 if missing | room + members |
@@ -92,8 +92,8 @@ Study sessions are **never created by the client**. The server writes them when 
 ### Health
 | Method | Path | Auth | Notes | Returns |
 |---|---|---|---|---|
-| GET | `/health` | no | **Liveness:** the process is up. Checks no dependencies, so a database blip never makes a platform restart a healthy API. | 200 `{ status: "ok" }` |
-| GET | `/health/db` | no | **Readiness:** PostgreSQL is reachable (`SELECT 1`). Redis is added when `lib/redis.ts` exists. Failures are logged server-side, never returned to the client. | 200 `{ status: "ok", database: "connected" }` or 503 `{ status: "error", database: "disconnected" }` |
+| GET | `/health/live` | no | **Liveness:** the process is up. Checks no dependencies, so a database blip never makes a platform restart a healthy API. Point the host's restart/health probe here. | 200 `{ status: "ok" }` |
+| GET | `/health` | no | **Readiness:** PostgreSQL (`SELECT 1`) and Redis (`PING`) are both reachable. Failures are logged server-side, never returned to the client. | 200 `{ status: "ok", database: "connected", redis: "connected" }` or 503 `{ status: "error", database: "...", redis: "..." }` |
 
 Health endpoints are exempt from the standard error shape on purpose: monitors expect a simple status body.
 

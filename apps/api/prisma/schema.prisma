@@ -72,6 +72,7 @@ model Room {
   longBreakMin     Int      @default(15) @map("long_break_min")
   cyclesBeforeLong Int      @default(4) @map("cycles_before_long")
   createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  closedAt DateTime? @map("closed_at") @db.Timestamptz(6)
 
   owner         User           @relation("RoomOwner", fields: [ownerId], references: [id], onDelete: Restrict)
   scene         Scene          @relation(fields: [sceneId], references: [id], onDelete: Restrict)

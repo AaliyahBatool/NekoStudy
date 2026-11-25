@@ -10,7 +10,7 @@ Library: Socket.IO. Transport carries *real-time state*. Anything one-off (signu
 - **Acks:** every command uses a Socket.IO ack callback returning `{ ok: true, ... }` or `{ ok: false, error: { code, message } }`.
 - **Server is authoritative.** The client never decides the time, the host, or who is in the room.
 - **Every payload is schema-validated** (e.g. zod). Invalid payload → `INVALID_PAYLOAD`.
-- **Auth:** JWT sent in the Socket.IO handshake. No valid token → connection rejected (`UNAUTHENTICATED`).
+- **Auth:** the same `httpOnly` access-token cookie as REST, sent automatically with the handshake (`withCredentials: true`; the server reads it from `socket.handshake.headers.cookie`). JavaScript cannot read an httpOnly cookie, so the client does not put a token in `auth`. No valid token → connection rejected (`UNAUTHENTICATED`).
 - **Socket.IO rooms:** each app room maps to a channel `room:{roomId}`. Broadcasts go to that channel only.
 
 ## 2. Roles and permissions

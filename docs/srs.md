@@ -110,7 +110,7 @@ No deadlines: milestones are ordered, not dated. Each milestone ends in a workin
 ### 4.1 Room lifecycle
 - A user can own up to 5 rooms; signup creates a first default room; a user may have zero after deleting them
 - A user can be a member of many rooms but active in only one at a time (enforced server-side through presence)
-- Closing a room removes members and revokes the link but keeps the room
+- Closing a room removes members except the owner and revokes the link but keeps the room
 - Deleting a room deletes members, links, timer and agenda; study sessions are kept with `room_id` set to null
 - Chat is not stored in the database
 

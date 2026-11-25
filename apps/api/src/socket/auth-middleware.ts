@@ -1,29 +1,38 @@
-import type { Socket } from "socket.io";
-import type { SocketData } from "../types/socket.js";
+import * as cookie from "cookie";
+import type { AppSocket } from "../types/socket.js";
+
+import { ACCESS_TOKEN_COOKIE_NAME } from "../constants/auth.js";
 import { verifyToken } from "../lib/auth.js";
 
 export async function authenticateSocket(
-  socket: Socket<any, any, any, SocketData>,
+  socket: AppSocket,
   next: (err?: Error) => void,
 ): Promise<void> {
-  const token = socket.handshake.auth?.token;
-
-  if (typeof token !== "string" || token.length === 0) {
-    next(new Error("Authentication required"));
-    return;
-  }
-
   try {
-    const payload = await verifyToken(token);
+    // Read the HTTP Cookie header sent during the Socket.IO handshake.
+    const cookies = cookie.parseCookie(socket.handshake.headers.cookie ?? "");
 
-    if (!payload) {
-      next(new Error("Invalid or expired token"));
+    // Extract the HTTP-only access token.
+    const token = cookies[ACCESS_TOKEN_COOKIE_NAME];
+
+    if (!token) {
+      next(new Error("UNAUTHENTICATED"));
       return;
     }
 
+    // Verify the token using the same authentication logic as REST.
+    const payload = await verifyToken(token);
+
+    if (!payload) {
+      next(new Error("UNAUTHENTICATED"));
+      return;
+    }
+
+    // Store the authenticated user ID for subsequent socket handlers.
     socket.data.userId = payload.userId;
+
     next();
   } catch {
-    next(new Error("Authentication failed"));
+    next(new Error("UNAUTHENTICATED"));
   }
 }
