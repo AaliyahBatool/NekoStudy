@@ -49,24 +49,76 @@ const io = new SocketIOServer<
 
 io.use(authenticateSocket);
 
+// Register Redis presence and join the user's private room before
+// Socket.IO accepts the connection.
+io.use(async (socket, next) => {
+  const userId = socket.data.userId;
+
+  if (!userId) {
+    next(new Error("UNAUTHENTICATED"));
+    return;
+  }
+
+  let registered = false;
+
+  try {
+    await registerSocket(userId, socket.id);
+    registered = true;
+
+    await socket.join(`user:${userId}`);
+
+    next();
+  } catch (error) {
+    logger.error(
+      { err: error, userId, socketId: socket.id },
+      "Socket initialization failed",
+    );
+
+    // Roll back Redis registration if private-room joining fails.
+    if (registered) {
+      try {
+        await unregisterSocket(userId, socket.id);
+      } catch (cleanupError) {
+        logger.error(
+          { err: cleanupError, userId, socketId: socket.id },
+          "Failed to roll back socket registration",
+        );
+      }
+    }
+
+    next(
+      error instanceof Error
+        ? error
+        : new Error("SOCKET_INITIALIZATION_FAILED"),
+    );
+  }
+});
+
 const pendingPresenceCleanup = new Set<Promise<void>>();
 
 io.on("connection", (socket) => {
   const userId = socket.data.userId;
 
+  // Defensive guard: the middleware should guarantee this.
   if (!userId) {
     socket.disconnect(true);
     return;
   }
 
-  let registration: Promise<void> = Promise.resolve();
+  // Registration and private-room joining have already completed.
+  // Handlers can therefore be registered immediately.
+  registerTimeSyncHandler(socket);
+  registerRoomJoinHandler(io, socket);
+  registerRoomLeaveHandler(io, socket);
+
+  logger.debug(
+    { userId, socketId: socket.id },
+    "Socket presence registered",
+  );
 
   socket.on("disconnect", (reason) => {
-    const cleanup = registration
-      .catch(() => undefined)
-      .then(async () => {
-        const result = await unregisterSocket(userId, socket.id);
-
+    const cleanup = unregisterSocket(userId, socket.id)
+      .then((result) => {
         logger.debug(
           {
             userId,
@@ -91,40 +143,8 @@ io.on("connection", (socket) => {
         pendingPresenceCleanup.delete(cleanup);
       });
   });
-
-  registration = (async () => {
-    await registerSocket(userId, socket.id);
-
-    // The socket might disconnect while Redis registration is pending.
-    if (!socket.connected) {
-      await unregisterSocket(userId, socket.id);
-      return;
-    }
-
-    // All tabs belonging to this user share a private Socket.IO room.
-    await socket.join(`user:${userId}`);
-
-    if (!socket.connected) {
-      await unregisterSocket(userId, socket.id);
-      return;
-    }
-
-    registerTimeSyncHandler(socket);
-    registerRoomJoinHandler(io, socket);
-    registerRoomLeaveHandler(io, socket);
-
-    logger.debug({ userId, socketId: socket.id }, "Socket presence registered");
-  })();
-
-  void registration.catch((error: unknown) => {
-    logger.error(
-      { err: error, userId, socketId: socket.id },
-      "Socket initialization failed",
-    );
-
-    socket.disconnect(true);
-  });
 });
+
 let isShuttingDown = false;
 
 async function shutdown(signal: string): Promise<void> {
