@@ -1,3 +1,4 @@
+
 import type { SocketErrorCode } from "@nekostudy/shared";
 
 import { prisma } from "../../lib/db.js";
@@ -23,11 +24,9 @@ export interface RoomJoinContext {
     shortBreakMin: number;
     longBreakMin: number;
     cyclesBeforeLong: number;
-    createdAt: Date;
     closedAt: Date | null;
   };
 
-  joinedAt: Date;
   displayName: string;
 }
 
@@ -47,7 +46,6 @@ export async function getRoomJoinContext(
       shortBreakMin: true,
       longBreakMin: true,
       cyclesBeforeLong: true,
-      createdAt: true,
       closedAt: true,
     },
   });
@@ -64,7 +62,6 @@ export async function getRoomJoinContext(
       },
     },
     select: {
-      joinedAt: true,
       bannedAt: true,
     },
   });
@@ -73,11 +70,17 @@ export async function getRoomJoinContext(
 
   // The owner must always retain access to their own room.
   if (!isOwner && !membership) {
-    throw new RoomJoinError("FORBIDDEN", "You are not a member of this room");
+    throw new RoomJoinError(
+      "FORBIDDEN",
+      "You are not a member of this room",
+    );
   }
 
   if (!isOwner && membership?.bannedAt) {
-    throw new RoomJoinError("BANNED", "You have been banned from this room");
+    throw new RoomJoinError(
+      "BANNED",
+      "You have been banned from this room",
+    );
   }
 
   if (room.closedAt && !isOwner) {
@@ -95,7 +98,6 @@ export async function getRoomJoinContext(
 
   return {
     room,
-    joinedAt: membership?.joinedAt ?? room.createdAt,
     displayName: user.displayName,
   };
 }

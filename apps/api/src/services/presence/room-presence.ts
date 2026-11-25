@@ -11,6 +11,7 @@ export type RoomJoinResult =
   | {
       status: "joined";
       previousRoomId: string | null;
+      joinedAt: Date;
       hostChanges: HostTransition[];
     }
   | {
@@ -165,9 +166,9 @@ export async function joinRoomPresence(input: {
   roomId: string;
   userId: string;
   ownerId: string;
-  joinedAt: Date;
   maxMembers: number;
 }): Promise<RoomJoinResult> {
+  const joinedAt = Date.now();
   const result = (await redis.eval(
     joinRoomScript,
     6,
@@ -179,7 +180,7 @@ export async function joinRoomPresence(input: {
     presenceKeys.roomOwner(input.roomId),
     input.userId,
     input.roomId,
-    input.joinedAt.getTime(),
+    joinedAt,
     input.maxMembers,
     "focusing",
     PRESENCE_PREFIX,
@@ -238,25 +239,55 @@ export async function joinRoomPresence(input: {
   }
 
   return {
-    status: "joined",
-    previousRoomId: previousRoomId || null,
-    hostChanges,
-  };
+  status: "joined",
+  previousRoomId: previousRoomId || null,
+  joinedAt: new Date(joinedAt),
+  hostChanges,
+};
 }
 
 const leaveRoomScript = `
+  local function getHost(usersKey, ownerKey)
+    local ownerId = redis.call("GET", ownerKey)
+
+    if ownerId and redis.call("ZSCORE", usersKey, ownerId) then
+      return ownerId
+    end
+
+    local earliest = redis.call("ZRANGE", usersKey, 0, 0)
+
+    if earliest[1] then
+      return earliest[1]
+    end
+
+    return ""
+  end
+
+  local userId = ARGV[1]
+  local prefix = ARGV[2]
+
   local roomId = redis.call("GET", KEYS[1])
 
--- Cancel any pending disconnect cleanup for this user.
-redis.call("ZREM", KEYS[2], userId)
+  -- Cancel any pending disconnect cleanup for this user.
+  redis.call("ZREM", KEYS[2], userId)
 
-if not roomId then
-  return { "not_in_room", "", "", "" }
-end
+  if not roomId then
+    return { "not_in_room", "", "", "" }
+  end
 
-local usersKey = prefix .. ":room:" .. roomId .. ":users"
-local statusesKey = prefix .. ":room:" .. roomId .. ":statuses"
-local ownerKey = prefix .. ":room:" .. roomId .. ":owner"
+  local usersKey = prefix .. ":room:" .. roomId .. ":users"
+  local statusesKey = prefix .. ":room:" .. roomId .. ":statuses"
+  local ownerKey = prefix .. ":room:" .. roomId .. ":owner"
+
+  local hostBefore = getHost(usersKey, ownerKey)
+
+  redis.call("ZREM", usersKey, userId)
+  redis.call("HDEL", statusesKey, userId)
+  redis.call("DEL", KEYS[1])
+
+  local hostAfter = getHost(usersKey, ownerKey)
+
+  return { "left", roomId, hostBefore, hostAfter }
 `;
 
 export async function leaveRoomPresence(
