@@ -31,6 +31,8 @@ import {
 
 import { registerRoomLeaveHandler } from "./socket/handlers/room-leave.js";
 
+import { clearStalePresence } from "./services/presence/startup-cleanup.js";
+
 const server = createServer(app);
 
 const io = new SocketIOServer<
@@ -111,10 +113,7 @@ io.on("connection", (socket) => {
     registerRoomJoinHandler(io, socket);
     registerRoomLeaveHandler(io, socket);
 
-    logger.debug(
-      { userId, socketId: socket.id },
-      "Socket presence registered",
-    );
+    logger.debug({ userId, socketId: socket.id }, "Socket presence registered");
   })();
 
   void registration.catch((error: unknown) => {
@@ -212,6 +211,10 @@ async function startServer(): Promise<void> {
     await Promise.all([prisma.$connect(), redis.connect()]);
 
     logger.info("PostgreSQL and Redis connected");
+
+    // Remove ephemeral presence left by a previous API process.
+    // Do this before starting the worker or accepting connections.
+    await clearStalePresence();
 
     startPresenceCleanupWorker(io);
 
