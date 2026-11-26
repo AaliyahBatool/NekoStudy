@@ -50,6 +50,7 @@ erDiagram
         int long_break_min "default 15"
         int cycles_before_long "default 4"
         timestamptz created_at
+        timestamptz closed_at "null while open"
     }
     ROOM_MEMBERS {
         uuid room_id PK, FK "ON DELETE CASCADE"
@@ -111,7 +112,7 @@ erDiagram
 3. **Study sessions are written per member** when a focus block completes while they were present. Stats and streaks are computed from this table with the user's timezone; no streak column.
 4. **Delete rules:** room deletion cascades to members, invites, timer, agenda. Sessions survive with `room_id = null`.
 5. **Member cap (50)** must be enforced in a transaction, because two people can join at the same instant.
-6. **A default room is created at signup** in the same transaction as the user, together with a `ROOM_TIMERS` row and a default scene. Every later room gets its own timer row the same way. "Closed" is not a column: it means no members and no active invite link.
+6. **Room closure is explicit.** `ROOMS.closed_at` is nullable. A null value means the room is open; a timestamp means it is closed. Non-owners cannot join a closed room, while the owner retains access. Closing a room is distinct from deleting it. The close and reopen workflows must maintain this field consistently.
 7. **Indexes to add:** `STUDY_SESSIONS (user_id, started_at)`, `AGENDA_ITEMS (room_id, position)`, `INVITE_LINKS (token_hash)`, `ROOMS (owner_id)`, `ROOM_MEMBERS (user_id)` (to list the rooms I belong to).
 8. **The active room is not in the database.** Which room a user is currently in lives in Redis presence (`userId -> activeRoomId`). Joining a second room removes the first. This also stops one focus block being credited in two rooms.
 9. **Room limit (5 per owner)** must be checked inside a transaction when creating a room, because two creates can race.

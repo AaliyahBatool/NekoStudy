@@ -47,8 +47,8 @@ model Scene {
   id              String  @id @default(uuid()) @db.Uuid
   name            String
   category        String
-  assetUrl        String  @map("asset_url")
-  thumbnailUrl    String  @map("thumbnail_url")
+  assetKey        String  @map("asset_key")
+  thumbnailKey    String  @map("thumbnail_key")
   ambientAudioUrl String? @map("ambient_audio_url")
   licenseNote     String  @map("license_note")
 
@@ -62,17 +62,17 @@ model Scene {
 // --------------------------------------------------
 
 model Room {
-  id               String   @id @default(uuid()) @db.Uuid
-  ownerId          String   @map("owner_id") @db.Uuid
-  sceneId          String   @map("scene_id") @db.Uuid
+  id               String    @id @default(uuid()) @db.Uuid
+  ownerId          String    @map("owner_id") @db.Uuid
+  sceneId          String    @map("scene_id") @db.Uuid
   name             String
-  maxMembers       Int      @default(50) @map("max_members")
-  focusMin         Int      @default(25) @map("focus_min")
-  shortBreakMin    Int      @default(5) @map("short_break_min")
-  longBreakMin     Int      @default(15) @map("long_break_min")
-  cyclesBeforeLong Int      @default(4) @map("cycles_before_long")
-  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  closedAt DateTime? @map("closed_at") @db.Timestamptz(6)
+  maxMembers       Int       @default(50) @map("max_members")
+  focusMin         Int       @default(25) @map("focus_min")
+  shortBreakMin    Int       @default(5) @map("short_break_min")
+  longBreakMin     Int       @default(15) @map("long_break_min")
+  cyclesBeforeLong Int       @default(4) @map("cycles_before_long")
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  closedAt         DateTime? @map("closed_at") @db.Timestamptz(6)
 
   owner         User           @relation("RoomOwner", fields: [ownerId], references: [id], onDelete: Restrict)
   scene         Scene          @relation(fields: [sceneId], references: [id], onDelete: Restrict)

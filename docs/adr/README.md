@@ -12,5 +12,8 @@ One file per significant decision: context, options, decision, consequences. Num
 | 006 | Ephemeral chat | Accepted |
 | 007 | Close and delete room are separate actions | Accepted |
 | 008 | Many rooms per user, one active at a time | Accepted |
+| 009 | TypeScript everywhere | Accepted |
+| 010 | pnpm workspaces monorepo | Accepted |
+| 011 | Prisma as the ORM | Accepted |
 
-Still to write: 009 TypeScript, 010 pnpm monorepo, 011 Prisma, 012 testing strategy (selective TDD), 013 deployment target.
+Still to write: 012 error handling and error codes, 013 testing strategy (selective TDD), 014 scene backgrounds as looping video served from storage, 015 deployment target.

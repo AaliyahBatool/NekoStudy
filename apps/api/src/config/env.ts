@@ -14,6 +14,7 @@ const envSchema = z.object({
   REDIS_URL: z.string().url(),
   JWT_SECRET: z.string().min(32, "must be at least 32 characters long"),
   COOKIE_SECRET: z.string().min(32, "must be at least 32 characters long"),
+  ASSET_BASE_URL: z.string().url(),
 });
 
 const result = envSchema.safeParse(process.env);
