@@ -11,6 +11,7 @@ import { AppError } from "./lib/errors.js";
 import { requestIdMiddleware } from "./middleware/request-id.js";
 import { errorHandler } from "./middleware/error-handler.js";
 import healthRouter from "./routes/health.js";
+import scenesRouter from "./routes/scenes.js";
 
 const app: Express = express();
 
@@ -61,6 +62,7 @@ app.use(
 
 // 7. API routes.
 app.use("/api/v1/health", healthRouter);
+app.use("/api/v1/scenes", scenesRouter);
 
 // 8. Unknown routes become standard 404 errors.
 app.use((_req, _res, next) => {
@@ -69,5 +71,6 @@ app.use((_req, _res, next) => {
 
 // 9. Error handler must be registered last.
 app.use(errorHandler);
+
 
 export default app;

@@ -35,10 +35,14 @@ Base path: `/api/v1`. JSON in, JSON out. Companion to `websocket-events.md`.
 | PATCH | `/me/settings` | yes | same fields, all optional | updated settings |
 
 ### Scenes (public: visitors can browse the dashboard)
+
 | Method | Path | Auth | Notes | Returns |
 |---|---|---|---|---|
-| GET | `/scenes?category=` | no | cacheable | `[{ id, name, category, thumbnailUrl, ambientAudioUrl }]` |
-| GET | `/scenes/:id` | no | | one scene with `assetUrl` |
+| GET | `/scenes?category=` | no | Optional category filter; sorted by name | `[{ id, name, category, thumbnailUrl, ambientAudioUrl }]` |
+| GET | `/scenes/:id` | no | UUID scene ID; 404 if missing | `{ id, name, category, thumbnailUrl, ambientAudioUrl, assetUrl }` |
+
+Asset URLs are resolved from relative database keys using `ASSET_BASE_URL`.
+The database never stores environment-specific asset hostnames.
 
 ### Rooms (a user owns up to 5)
 | Method | Path | Auth | Notes | Returns |
