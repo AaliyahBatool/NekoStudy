@@ -1,10 +1,21 @@
 
+import express from 'express';
 import request from 'supertest';
 import { afterAll, describe, expect, it } from 'vitest';
 
 import app from './app.js';
+import { AppError } from './lib/errors.js';
 import { prisma } from './lib/db.js';
 import { redis } from './lib/redis.js';
+import { errorHandler } from './middleware/error-handler.js';
+
+const errorTestApp = express();
+
+errorTestApp.get('/test-app-error', (_req, _res, next) => {
+  next(new AppError('FORBIDDEN', 403, 'Access denied'));
+});
+
+errorTestApp.use(errorHandler);
 
 afterAll(async () => {
   await prisma.$disconnect();
@@ -57,6 +68,18 @@ describe('Error handling', () => {
       error: {
         code: 'VALIDATION_ERROR',
         message: 'Invalid request',
+      },
+    });
+  });
+
+  it('returns the status and code from a thrown AppError', async () => {
+    const response = await request(errorTestApp).get('/test-app-error');
+
+    expect(response.status).toBe(403);
+    expect(response.body).toEqual({
+      error: {
+        code: 'FORBIDDEN',
+        message: 'Access denied',
       },
     });
   });
