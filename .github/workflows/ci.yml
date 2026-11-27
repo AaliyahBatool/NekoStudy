@@ -63,6 +63,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Generate Prisma client
+        run: pnpm --filter @nekostudy/api exec prisma generate
+
       - name: Deploy database migrations
         run: pnpm --filter @nekostudy/api exec prisma migrate deploy
 
