@@ -11,7 +11,8 @@
     "typecheck": "pnpm --filter @nekostudy/shared build && pnpm --filter @nekostudy/api typecheck && pnpm --filter @nekostudy/web typecheck",
     "lint": "eslint . --ext .js,.mjs,.cjs,.ts,.tsx",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "test": "pnpm --filter @nekostudy/api test"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

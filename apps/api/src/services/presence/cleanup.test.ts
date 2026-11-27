@@ -1,4 +1,3 @@
-
 import { randomUUID } from 'node:crypto';
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -111,10 +110,10 @@ describe('Disconnect cleanup worker', () => {
     await redis.zadd(presenceKeys.disconnectDeadlines(), 0, userId);
 
     const emit = vi.fn();
-const to = vi.fn(() => ({ emit }));
-const io = {
-  to,
-} as unknown as AppSocketServer;
+    const to = vi.fn(() => ({ emit }));
+    const io = {
+      to,
+    } as unknown as AppSocketServer;
 
     try {
       startPresenceCleanupWorker(io);
