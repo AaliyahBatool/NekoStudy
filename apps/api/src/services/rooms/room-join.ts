@@ -1,7 +1,6 @@
+import type { SocketErrorCode } from '@nekostudy/shared';
 
-import type { SocketErrorCode } from "@nekostudy/shared";
-
-import { prisma } from "../../lib/db.js";
+import { prisma } from '../../lib/db.js';
 
 export class RoomJoinError extends Error {
   constructor(
@@ -9,7 +8,7 @@ export class RoomJoinError extends Error {
     message: string,
   ) {
     super(message);
-    this.name = "RoomJoinError";
+    this.name = 'RoomJoinError';
   }
 }
 
@@ -30,10 +29,7 @@ export interface RoomJoinContext {
   displayName: string;
 }
 
-export async function getRoomJoinContext(
-  roomId: string,
-  userId: string,
-): Promise<RoomJoinContext> {
+export async function getRoomJoinContext(roomId: string, userId: string): Promise<RoomJoinContext> {
   const room = await prisma.room.findUnique({
     where: { id: roomId },
     select: {
@@ -51,7 +47,7 @@ export async function getRoomJoinContext(
   });
 
   if (!room) {
-    throw new RoomJoinError("NOT_FOUND", "Room not found");
+    throw new RoomJoinError('NOT_FOUND', 'Room not found');
   }
 
   const membership = await prisma.roomMember.findUnique({
@@ -70,21 +66,15 @@ export async function getRoomJoinContext(
 
   // The owner must always retain access to their own room.
   if (!isOwner && !membership) {
-    throw new RoomJoinError(
-      "FORBIDDEN",
-      "You are not a member of this room",
-    );
+    throw new RoomJoinError('FORBIDDEN', 'You are not a member of this room');
   }
 
   if (!isOwner && membership?.bannedAt) {
-    throw new RoomJoinError(
-      "BANNED",
-      "You have been banned from this room",
-    );
+    throw new RoomJoinError('BANNED', 'You have been banned from this room');
   }
 
   if (room.closedAt && !isOwner) {
-    throw new RoomJoinError("FORBIDDEN", "This room is closed");
+    throw new RoomJoinError('FORBIDDEN', 'This room is closed');
   }
 
   const user = await prisma.user.findUnique({
@@ -93,7 +83,7 @@ export async function getRoomJoinContext(
   });
 
   if (!user) {
-    throw new RoomJoinError("UNAUTHENTICATED", "User account not found");
+    throw new RoomJoinError('UNAUTHENTICATED', 'User account not found');
   }
 
   return {

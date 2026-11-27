@@ -13,9 +13,11 @@ Base path: `/api/v1`. JSON in, JSON out. Companion to `websocket-events.md`.
 - **Auth:** access token in an `httpOnly`, `Secure`, `SameSite=Lax` cookie (+ short-lived refresh). Sockets reuse the same token at handshake.
 - **IDs:** UUIDs. **Times:** ISO 8601 UTC strings.
 - **Errors (always this shape):**
+
 ```
 { "error": { "code": "ROOM_FULL", "message": "This room is full.", "details": {} } }
 ```
+
 - **Codes:** `UNAUTHENTICATED` (401), `FORBIDDEN` (403), `NOT_FOUND` (404), `VALIDATION_ERROR` (422), `EMAIL_TAKEN` (409), `INVALID_CREDENTIALS` (401), `INVITE_INVALID` (410), `ROOM_FULL` (409), `ROOM_LIMIT` (409), `BANNED` (403), `RATE_LIMITED` (429).
 - **Validation:** every body/query validated with a schema (e.g. zod). Reject unknown fields.
 - **Passwords:** argon2id or bcrypt. Never log passwords or tokens.
@@ -23,81 +25,88 @@ Base path: `/api/v1`. JSON in, JSON out. Companion to `websocket-events.md`.
 ## 3. Endpoints
 
 ### Auth and account
-| Method | Path | Auth | Body / notes | Returns |
-|---|---|---|---|---|
-| POST | `/auth/signup` | no | `{ email, password, displayName, timezone }`. In ONE transaction: create user, settings, a default room and its timer. | 201 `{ user }` + cookies |
-| POST | `/auth/login` | no | `{ email, password }` | 200 `{ user }` + cookies |
-| POST | `/auth/logout` | yes | clears cookies | 204 |
-| POST | `/auth/refresh` | cookie | rotates tokens | 204 |
-| GET | `/me` | yes | | `{ user, ownedRoomCount }` |
-| PATCH | `/me` | yes | `{ displayName?, timezone? }` | `{ user }` |
-| GET | `/me/settings` | yes | | `{ widgetLayout, ambientEnabled, ambientVolume }` |
-| PATCH | `/me/settings` | yes | same fields, all optional | updated settings |
+
+| Method | Path            | Auth   | Body / notes                                                                                                           | Returns                                           |
+| ------ | --------------- | ------ | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| POST   | `/auth/signup`  | no     | `{ email, password, displayName, timezone }`. In ONE transaction: create user, settings, a default room and its timer. | 201 `{ user }` + cookies                          |
+| POST   | `/auth/login`   | no     | `{ email, password }`                                                                                                  | 200 `{ user }` + cookies                          |
+| POST   | `/auth/logout`  | yes    | clears cookies                                                                                                         | 204                                               |
+| POST   | `/auth/refresh` | cookie | rotates tokens                                                                                                         | 204                                               |
+| GET    | `/me`           | yes    |                                                                                                                        | `{ user, ownedRoomCount }`                        |
+| PATCH  | `/me`           | yes    | `{ displayName?, timezone? }`                                                                                          | `{ user }`                                        |
+| GET    | `/me/settings`  | yes    |                                                                                                                        | `{ widgetLayout, ambientEnabled, ambientVolume }` |
+| PATCH  | `/me/settings`  | yes    | same fields, all optional                                                                                              | updated settings                                  |
 
 ### Scenes (public: visitors can browse the dashboard)
 
-| Method | Path | Auth | Notes | Returns |
-|---|---|---|---|---|
-| GET | `/scenes?category=` | no | Optional category filter; sorted by name | `[{ id, name, category, thumbnailUrl, ambientAudioUrl }]` |
-| GET | `/scenes/:id` | no | UUID scene ID; 404 if missing | `{ id, name, category, thumbnailUrl, ambientAudioUrl, assetUrl }` |
+| Method | Path                | Auth | Notes                                    | Returns                                                           |
+| ------ | ------------------- | ---- | ---------------------------------------- | ----------------------------------------------------------------- |
+| GET    | `/scenes?category=` | no   | Optional category filter; sorted by name | `[{ id, name, category, thumbnailUrl, ambientAudioUrl }]`         |
+| GET    | `/scenes/:id`       | no   | UUID scene ID; 404 if missing            | `{ id, name, category, thumbnailUrl, ambientAudioUrl, assetUrl }` |
 
 Asset URLs are resolved from relative database keys using `ASSET_BASE_URL`.
 The database never stores environment-specific asset hostnames.
 
 ### Rooms (a user owns up to 5)
-| Method | Path | Auth | Notes | Returns |
-|---|---|---|---|---|
-| GET | `/rooms` | yes | rooms I own and rooms I belong to, with scene and member count | `{ owned: [...], member: [...] }` |
-| PATCH | `/rooms/:id` | owner | `{ sceneId?, name?, focusMin?, shortBreakMin?, longBreakMin?, cyclesBeforeLong? }`. Bounds-checked. If people are connected, the service also broadcasts (same code as the socket path). | room |
-| POST | `/rooms/:id/close` | owner | removes all members except the owner, revokes the invite link, stops the timer, broadcasts `room:closed`. Scene, durations and agenda are kept. Creating a new link reopens the room. | 204 |
-| DELETE | `/rooms/:id` | owner | deletes the room (cascade: members, links, timer, agenda), broadcasts `room:deleted`. Study history is kept. UI must ask for confirmation. | 204 |
-| POST | `/rooms` | yes | `{ name, sceneId }` creates a room with its own timer. 409 `ROOM_LIMIT` if you already own 5. Limit checked in a transaction. | 201 room |
-| GET | `/rooms/:id` | member | 403 if not a member, 404 if missing | room + members |
-| DELETE | `/rooms/:id/membership` | member | "Leave room" | 204 |
+
+| Method | Path                    | Auth   | Notes                                                                                                                                                                                    | Returns                           |
+| ------ | ----------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
+| GET    | `/rooms`                | yes    | rooms I own and rooms I belong to, with scene and member count                                                                                                                           | `{ owned: [...], member: [...] }` |
+| PATCH  | `/rooms/:id`            | owner  | `{ sceneId?, name?, focusMin?, shortBreakMin?, longBreakMin?, cyclesBeforeLong? }`. Bounds-checked. If people are connected, the service also broadcasts (same code as the socket path). | room                              |
+| POST   | `/rooms/:id/close`      | owner  | removes all members except the owner, revokes the invite link, stops the timer, broadcasts `room:closed`. Scene, durations and agenda are kept. Creating a new link reopens the room.    | 204                               |
+| DELETE | `/rooms/:id`            | owner  | deletes the room (cascade: members, links, timer, agenda), broadcasts `room:deleted`. Study history is kept. UI must ask for confirmation.                                               | 204                               |
+| POST   | `/rooms`                | yes    | `{ name, sceneId }` creates a room with its own timer. 409 `ROOM_LIMIT` if you already own 5. Limit checked in a transaction.                                                            | 201 room                          |
+| GET    | `/rooms/:id`            | member | 403 if not a member, 404 if missing                                                                                                                                                      | room + members                    |
+| DELETE | `/rooms/:id/membership` | member | "Leave room"                                                                                                                                                                             | 204                               |
 
 ### Invites
-| Method | Path | Auth | Notes | Returns |
-|---|---|---|---|---|
-| POST | `/rooms/:id/invites` | owner | `{ expiresInDays? }`. Creates a new link and **revokes the previous active one**. Raw token returned once. | 201 `{ url, expiresAt }` |
-| GET | `/rooms/:id/invites/active` | owner | metadata only, never the raw token | `{ createdAt, expiresAt } or 404` |
-| DELETE | `/rooms/:id/invites/active` | owner | "Turn off" | 204 |
-| GET | `/invites/:token` | no | landing/signup preview. Rate-limited. Returns only low-risk info. | `{ state: "valid\|revoked\|expired\|full", roomName, ownerName, sceneThumbnailUrl, memberCount }` |
-| POST | `/invites/:token/accept` | yes | validates token, ban list, capacity (in a transaction). **Idempotent**: already a member returns 200. | `{ roomId }` |
+
+| Method | Path                        | Auth  | Notes                                                                                                      | Returns                                                                                           |
+| ------ | --------------------------- | ----- | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| POST   | `/rooms/:id/invites`        | owner | `{ expiresInDays? }`. Creates a new link and **revokes the previous active one**. Raw token returned once. | 201 `{ url, expiresAt }`                                                                          |
+| GET    | `/rooms/:id/invites/active` | owner | metadata only, never the raw token                                                                         | `{ createdAt, expiresAt } or 404`                                                                 |
+| DELETE | `/rooms/:id/invites/active` | owner | "Turn off"                                                                                                 | 204                                                                                               |
+| GET    | `/invites/:token`           | no    | landing/signup preview. Rate-limited. Returns only low-risk info.                                          | `{ state: "valid\|revoked\|expired\|full", roomName, ownerName, sceneThumbnailUrl, memberCount }` |
+| POST   | `/invites/:token/accept`    | yes   | validates token, ban list, capacity (in a transaction). **Idempotent**: already a member returns 200.      | `{ roomId }`                                                                                      |
 
 After `accept`, the client opens the socket and emits `room:join { roomId }`.
 
 ### Notes (personal, private)
-| Method | Path | Auth | Notes |
-|---|---|---|---|
-| GET | `/notes` | yes | list mine |
-| POST | `/notes` | yes | `{ body }` (max length enforced) |
-| PATCH | `/notes/:id` | yes | owner of note only |
-| DELETE | `/notes/:id` | yes | owner of note only |
+
+| Method | Path         | Auth | Notes                            |
+| ------ | ------------ | ---- | -------------------------------- |
+| GET    | `/notes`     | yes  | list mine                        |
+| POST   | `/notes`     | yes  | `{ body }` (max length enforced) |
+| PATCH  | `/notes/:id` | yes  | owner of note only               |
+| DELETE | `/notes/:id` | yes  | owner of note only               |
 
 ### Timer (solo / M1 path)
+
 Same `timerService` the socket handlers will call later. Owner-only here; guest hosts use sockets.
 
-| Method | Path | Notes | Returns |
-|---|---|---|---|
-| GET | `/rooms/:id/timer` | current state + `serverTime` | timer state |
-| POST | `/rooms/:id/timer/start` | `{ mode? }` | timer state |
-| POST | `/rooms/:id/timer/pause` | | timer state |
-| POST | `/rooms/:id/timer/resume` | | timer state |
-| POST | `/rooms/:id/timer/reset` | | timer state |
-| POST | `/rooms/:id/timer/skip` | | timer state |
+| Method | Path                      | Notes                        | Returns     |
+| ------ | ------------------------- | ---------------------------- | ----------- |
+| GET    | `/rooms/:id/timer`        | current state + `serverTime` | timer state |
+| POST   | `/rooms/:id/timer/start`  | `{ mode? }`                  | timer state |
+| POST   | `/rooms/:id/timer/pause`  |                              | timer state |
+| POST   | `/rooms/:id/timer/resume` |                              | timer state |
+| POST   | `/rooms/:id/timer/reset`  |                              | timer state |
+| POST   | `/rooms/:id/timer/skip`   |                              | timer state |
 
 Study sessions are **never created by the client**. The server writes them when a focus block completes.
 
 ### Stats
-| Method | Path | Auth | Returns |
-|---|---|---|---|
-| GET | `/me/stats?range=today\|week\|month` | yes | `{ focusSeconds, sessions, streak: { current, longest }, byDay: [{ date, focusSeconds }] }` computed in the user's timezone |
+
+| Method | Path                                 | Auth | Returns                                                                                                                     |
+| ------ | ------------------------------------ | ---- | --------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/me/stats?range=today\|week\|month` | yes  | `{ focusSeconds, sessions, streak: { current, longest }, byDay: [{ date, focusSeconds }] }` computed in the user's timezone |
 
 ### Health
-| Method | Path | Auth | Notes | Returns |
-|---|---|---|---|---|
-| GET | `/health/live` | no | **Liveness:** the process is up. Checks no dependencies, so a database blip never makes a platform restart a healthy API. Point the host's restart/health probe here. | 200 `{ status: "ok" }` |
-| GET | `/health` | no | **Readiness:** PostgreSQL (`SELECT 1`) and Redis (`PING`) are both reachable. Failures are logged server-side, never returned to the client. | 200 `{ status: "ok", database: "connected", redis: "connected" }` or 503 `{ status: "error", database: "...", redis: "..." }` |
+
+| Method | Path           | Auth | Notes                                                                                                                                                                 | Returns                                                                                                                       |
+| ------ | -------------- | ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/health/live` | no   | **Liveness:** the process is up. Checks no dependencies, so a database blip never makes a platform restart a healthy API. Point the host's restart/health probe here. | 200 `{ status: "ok" }`                                                                                                        |
+| GET    | `/health`      | no   | **Readiness:** PostgreSQL (`SELECT 1`) and Redis (`PING`) are both reachable. Failures are logged server-side, never returned to the client.                          | 200 `{ status: "ok", database: "connected", redis: "connected" }` or 503 `{ status: "error", database: "...", redis: "..." }` |
 
 Health endpoints are exempt from the standard error shape on purpose: monitors expect a simple status body.
 

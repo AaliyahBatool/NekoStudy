@@ -1,0 +1,9 @@
+
+node_modules/
+**/dist/
+**/build/
+**/coverage/
+**/generated/
+apps/api/prisma/migrations/
+apps/api/public/scenes-assets/
+pnpm-lock.yaml

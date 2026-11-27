@@ -19,7 +19,7 @@ Each of these is a real decision. My recommendation is in bold; change it if you
 - [ ] **Tests: Vitest** (unit + integration), `supertest` for HTTP, `socket.io-client` for socket tests
 - [ ] **Lint/format: ESLint + Prettier**
 - [ ] **Logging: pino** (structured JSON logs)
-- [ ] **Deployment target [ADR]:** the backend needs a **long-running server** (WebSockets), so serverless functions won't work. Check the *current* free tiers of a few hosts for the API, Postgres and Redis before choosing, and note when you checked. The frontend can go on any static host.
+- [ ] **Deployment target [ADR]:** the backend needs a **long-running server** (WebSockets), so serverless functions won't work. Check the _current_ free tiers of a few hosts for the API, Postgres and Redis before choosing, and note when you checked. The frontend can go on any static host.
 
 ---
 

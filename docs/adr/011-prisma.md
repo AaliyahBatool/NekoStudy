@@ -12,17 +12,20 @@
 ## Options considered
 
 ### Prisma
+
 - Schema-first approach.
 - Generated, type-safe database client.
 - Integrated migration workflow.
 - Good developer productivity.
 
 ### Drizzle ORM
+
 - More SQL-oriented and lightweight.
 - Provides strong TypeScript integration.
 - Gives developers more direct control over queries.
 
 ### Raw SQL
+
 - Maximum control over queries.
 - Requires more manual handling of types and migrations.
 - More maintenance overhead for this project's needs.

@@ -1,21 +1,20 @@
 export type SocketErrorCode =
-  | "UNAUTHENTICATED"
-  | "FORBIDDEN"
-  | "NOT_FOUND"
-  | "ROOM_FULL"
-  | "BANNED"
-  | "INVALID_PAYLOAD"
-  | "RATE_LIMITED"
-  | "INTERNAL";
+  | 'UNAUTHENTICATED'
+  | 'FORBIDDEN'
+  | 'NOT_FOUND'
+  | 'ROOM_FULL'
+  | 'BANNED'
+  | 'INVALID_PAYLOAD'
+  | 'RATE_LIMITED'
+  | 'INTERNAL';
 
 export interface SocketError {
   code: SocketErrorCode;
   message: string;
 }
 
-export type SocketAck<T extends object = {}> =
-  | ({ ok: true } & T)
-  | { ok: false; error: SocketError };
+export type SocketAck<T extends object = Record<string, never>> =
+  ({ ok: true } & T) | { ok: false; error: SocketError };
 // -----------------------------------------------
 // TIME SYNCHRONIZATION
 // -----------------------------------------------
@@ -35,9 +34,9 @@ export interface TimeSyncResponse {
 // ROOM SNAPSHOT
 // -----------------------------------------------
 
-export type MemberStatus = "focusing" | "break" | "away";
+export type MemberStatus = 'focusing' | 'break' | 'away';
 
-export type TimerMode = "idle" | "focus" | "short_break" | "long_break";
+export type TimerMode = 'idle' | 'focus' | 'short_break' | 'long_break';
 
 export interface RoomSnapshot {
   room: {
@@ -123,20 +122,17 @@ export interface PresenceLeftPayload {
 // -----------------------------------------------
 
 export interface ClientToServerEvents {
-  "time:sync": (
+  'time:sync': (
     payload: TimeSyncPayload,
     ack: (response: SocketAck<TimeSyncResponse>) => void,
   ) => void;
 
-  "room:join": (
+  'room:join': (
     payload: RoomJoinPayload,
     ack: (response: SocketAck<RoomJoinResponse>) => void,
   ) => void;
 
-  "room:leave": (
-  payload: RoomLeavePayload,
-  ack: (response: SocketAck) => void,
-) => void;
+  'room:leave': (payload: RoomLeavePayload, ack: (response: SocketAck) => void) => void;
 }
 
 // -----------------------------------------------
@@ -144,20 +140,18 @@ export interface ClientToServerEvents {
 // -----------------------------------------------
 
 export interface ServerToClientEvents {
-  error: (payload: {
-    code: SocketErrorCode;
-    message: string;
-    event?: string;
-  }) => void;
+  error: (payload: { code: SocketErrorCode; message: string; event?: string }) => void;
 
-  "room:snapshot": (snapshot: RoomSnapshot) => void;
+  'room:snapshot': (snapshot: RoomSnapshot) => void;
 
-  "presence:joined": (payload: PresenceJoinedPayload) => void;
-  "presence:left": (payload: PresenceLeftPayload) => void;
-  "host:changed": (payload: { roomId: string; hostId: string | null }) => void;
-  "room:left": (payload: { roomId: string }) => void;
+  'presence:joined': (payload: PresenceJoinedPayload) => void;
+  'presence:left': (payload: PresenceLeftPayload) => void;
+  'host:changed': (payload: { roomId: string; hostId: string | null }) => void;
+  'room:left': (payload: { roomId: string }) => void;
 }
 
+// Socket.IO uses this empty event map because we define no inter-server events.
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface InterServerEvents {}
 
 export type RoomLeavePayload = Record<string, never>;

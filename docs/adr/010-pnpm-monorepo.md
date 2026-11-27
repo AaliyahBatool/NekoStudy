@@ -5,6 +5,7 @@
 **Context:** The project has three parts that change together: the web app, the API and the shared types package. They need to share code and be versioned, tested and deployed as one project by one developer.
 
 **Options considered**
+
 1. Separate repositories for web, API and shared types
 2. One repository with npm workspaces
 3. One repository with pnpm workspaces
@@ -13,6 +14,7 @@
 **Decision:** Option 3. `apps/web`, `apps/api` and `packages/shared` are workspace packages. Internal dependencies use the `workspace:*` protocol. The package manager version is pinned with the `packageManager` field and Node is pinned to 22 (`.nvmrc` and `engines`).
 
 **Consequences**
+
 - (+) One pull request can change an event type, the server handler and the client call together
 - (+) pnpm's strict `node_modules` layout stops a package importing a dependency it never declared
 - (+) A single lockfile and fast, disk-efficient installs; `pnpm -r` and `--filter` run scripts across packages in dependency order

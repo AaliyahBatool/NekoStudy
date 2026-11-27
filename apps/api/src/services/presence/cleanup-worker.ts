@@ -1,9 +1,8 @@
+import type { AppSocketServer } from '../../types/socket.js';
 
-import type { AppSocketServer } from "../../types/socket.js";
-
-import { redis } from "../../lib/redis.js";
-import { logger } from "../../lib/logger.js";
-import { PRESENCE_PREFIX, presenceKeys } from "./keys.js";
+import { redis } from '../../lib/redis.js';
+import { logger } from '../../lib/logger.js';
+import { PRESENCE_PREFIX, presenceKeys } from './keys.js';
 
 const CLEANUP_INTERVAL_MS = 1_000;
 const CLEANUP_BATCH_SIZE = 100;
@@ -64,17 +63,15 @@ const cleanupScript = `
   return { "1", roomId, hostBefore, hostAfter }
 `;
 
-async function cleanupDueDisconnects(
-  io: AppSocketServer,
-): Promise<void> {
+async function cleanupDueDisconnects(io: AppSocketServer): Promise<void> {
   const deadlinesKey = presenceKeys.disconnectDeadlines();
   const now = Date.now();
 
   const userIds = await redis.zrangebyscore(
     deadlinesKey,
-    "-inf",
+    '-inf',
     now,
-    "LIMIT",
+    'LIMIT',
     0,
     CLEANUP_BATCH_SIZE,
   );
@@ -93,14 +90,14 @@ async function cleanupDueDisconnects(
 
     const [removed, roomId, previousHostId, hostId] = result;
 
-    if (removed !== "1" || !roomId) continue;
+    if (removed !== '1' || !roomId) continue;
 
     const roomChannel = `room:${roomId}`;
 
-    io.to(roomChannel).emit("presence:left", { userId });
+    io.to(roomChannel).emit('presence:left', { userId });
 
     if (previousHostId !== hostId) {
-      io.to(roomChannel).emit("host:changed", {
+      io.to(roomChannel).emit('host:changed', {
         roomId,
         hostId: hostId || null,
       });
@@ -113,7 +110,7 @@ async function cleanupDueDisconnects(
         previousHostId: previousHostId || null,
         hostId: hostId || null,
       },
-      "Disconnected user presence cleaned up",
+      'Disconnected user presence cleaned up',
     );
   }
 }
@@ -121,25 +118,20 @@ async function cleanupDueDisconnects(
 let interval: ReturnType<typeof setInterval> | undefined;
 let activeRun: Promise<void> | undefined;
 
-export function startPresenceCleanupWorker(
-  io: AppSocketServer,
-): void {
+export function startPresenceCleanupWorker(io: AppSocketServer): void {
   if (interval) return;
 
   interval = setInterval(() => {
-  if (activeRun) return;
+    if (activeRun) return;
 
-  activeRun = cleanupDueDisconnects(io)
-    .catch((error: unknown) => {
-      logger.error(
-        { err: error },
-        "Presence cleanup failed",
-      );
-    })
-    .finally(() => {
-      activeRun = undefined;
-    });
-}, CLEANUP_INTERVAL_MS);
+    activeRun = cleanupDueDisconnects(io)
+      .catch((error: unknown) => {
+        logger.error({ err: error }, 'Presence cleanup failed');
+      })
+      .finally(() => {
+        activeRun = undefined;
+      });
+  }, CLEANUP_INTERVAL_MS);
 
   interval.unref();
 }

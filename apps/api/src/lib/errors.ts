@@ -1,10 +1,5 @@
 export type ErrorCode =
-  | "NOT_FOUND"
-  | "VALIDATION_ERROR"
-  | "UNAUTHENTICATED"
-  | "FORBIDDEN"
-  | "CONFLICT"
-  | "INTERNAL";
+  'NOT_FOUND' | 'VALIDATION_ERROR' | 'UNAUTHENTICATED' | 'FORBIDDEN' | 'CONFLICT' | 'INTERNAL';
 
 export class AppError extends Error {
   constructor(
@@ -14,7 +9,7 @@ export class AppError extends Error {
     public readonly details?: unknown,
   ) {
     super(message);
-    this.name = "AppError";
+    this.name = 'AppError';
 
     // Needed for reliable instanceof checks in some transpilation setups.
     Object.setPrototypeOf(this, new.target.prototype);

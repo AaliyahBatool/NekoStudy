@@ -1,5 +1,4 @@
-
-export const PRESENCE_PREFIX = "nekostudy";
+export const PRESENCE_PREFIX = 'nekostudy';
 
 export const presenceKeys = {
   roomUsers(roomId: string): string {
@@ -31,6 +30,6 @@ export const presenceKeys = {
   },
 
   roomOwner(roomId: string): string {
-  return `${PRESENCE_PREFIX}:room:${roomId}:owner`;
-},
+    return `${PRESENCE_PREFIX}:room:${roomId}:owner`;
+  },
 };

@@ -1,14 +1,9 @@
-
-import { redis } from "../../lib/redis.js";
-import { presenceKeys } from "./keys.js";
+import { redis } from '../../lib/redis.js';
+import { presenceKeys } from './keys.js';
 
 const DISCONNECT_GRACE_MS = 10_000;
 
-
-export async function registerSocket(
-  userId: string,
-  socketId: string,
-): Promise<void> {
+export async function registerSocket(userId: string, socketId: string): Promise<void> {
   const script = `
     redis.call("SADD", KEYS[1], ARGV[1])
     redis.call("ZREM", KEYS[2], ARGV[2])
@@ -24,7 +19,6 @@ export async function registerSocket(
     userId,
   );
 }
-
 
 export async function unregisterSocket(
   userId: string,

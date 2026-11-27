@@ -1,10 +1,14 @@
-import type { ErrorRequestHandler } from "express";
-import { ZodError } from "zod";
+import type { ErrorRequestHandler } from 'express';
+import { ZodError } from 'zod';
 
-import { AppError } from "../lib/errors.js";
-import { logger } from "../lib/logger.js";
+import { AppError } from '../lib/errors.js';
+import { logger } from '../lib/logger.js';
 
-export const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+export const errorHandler: ErrorRequestHandler = (error: unknown, _req, res, _next) => {
   if (error instanceof AppError) {
     res.status(error.httpStatus).json({
       error: {
@@ -22,8 +26,8 @@ export const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
   if (error instanceof ZodError) {
     res.status(422).json({
       error: {
-        code: "VALIDATION_ERROR",
-        message: "Request validation failed",
+        code: 'VALIDATION_ERROR',
+        message: 'Request validation failed',
         details: error.issues,
       },
     });
@@ -34,32 +38,27 @@ export const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
   // Handle 4xx errors raised by Express middleware,
   // such as malformed JSON and oversized request bodies.
   const status =
-    typeof error === "object" &&
-    error !== null &&
-    "status" in error &&
-    typeof error.status === "number" &&
-    Number.isInteger(error.status)
+    isRecord(error) && typeof error.status === 'number' && Number.isInteger(error.status)
       ? error.status
       : undefined;
 
   if (status !== undefined && status >= 400 && status < 500) {
     res.status(status).json({
       error: {
-        code: "VALIDATION_ERROR",
-        message: "Invalid request",
+        code: 'VALIDATION_ERROR',
+        message: 'Invalid request',
       },
     });
 
     return;
   }
 
-  // Log the full error on the server, never return it to the client.
-  logger.error({ err: error }, "Unhandled application error");
+  logger.error({ err: error }, 'Unhandled request error');
 
   res.status(500).json({
     error: {
-      code: "INTERNAL",
-      message: "An unexpected error occurred",
+      code: 'INTERNAL_SERVER_ERROR',
+      message: 'An unexpected error occurred',
     },
   });
 };

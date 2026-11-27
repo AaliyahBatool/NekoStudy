@@ -1,7 +1,6 @@
-
-import { redis } from "../../lib/redis.js";
-import { logger } from "../../lib/logger.js";
-import { PRESENCE_PREFIX, presenceKeys } from "./keys.js";
+import { redis } from '../../lib/redis.js';
+import { logger } from '../../lib/logger.js';
+import { PRESENCE_PREFIX, presenceKeys } from './keys.js';
 
 const SCAN_COUNT = 100;
 const UNLINK_BATCH_SIZE = 100;
@@ -13,17 +12,11 @@ const UNLINK_BATCH_SIZE = 100;
  * UNLINK removes keys asynchronously where possible.
  */
 async function deleteMatchingKeys(pattern: string): Promise<number> {
-  let cursor = "0";
+  let cursor = '0';
   let deletedCount = 0;
 
   do {
-    const [nextCursor, keys] = await redis.scan(
-      cursor,
-      "MATCH",
-      pattern,
-      "COUNT",
-      SCAN_COUNT,
-    );
+    const [nextCursor, keys] = await redis.scan(cursor, 'MATCH', pattern, 'COUNT', SCAN_COUNT);
 
     cursor = nextCursor;
 
@@ -34,7 +27,7 @@ async function deleteMatchingKeys(pattern: string): Promise<number> {
         deletedCount += await redis.unlink(...batch);
       }
     }
-  } while (cursor !== "0");
+  } while (cursor !== '0');
 
   return deletedCount;
 }
@@ -62,8 +55,5 @@ export async function clearStalePresence(): Promise<void> {
   // This sorted set contains pending disconnect cleanup deadlines.
   totalDeleted += await redis.unlink(presenceKeys.disconnectDeadlines());
 
-  logger.info(
-    { deletedKeys: totalDeleted },
-    "Stale Redis presence cleared",
-  );
+  logger.info({ deletedKeys: totalDeleted }, 'Stale Redis presence cleared');
 }
