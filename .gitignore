@@ -17,3 +17,5 @@ apps/api/.windsurf/
 apps/api/skills-lock.json
 
 /apps/api/public/scenes-assets/
+
+.env.test
