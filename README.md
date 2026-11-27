@@ -63,6 +63,12 @@ pnpm --filter @nekostudy/api dev
 
 Check it: `GET http://localhost:4000/api/v1/health` should return `{ "status": "ok", "database": "connected", "redis": "connected" }`.
 
+## Running tests
+
+Start PostgreSQL and Redis, ensure the test database has its migrations applied, copy `.env.test.example` to `.env.test`, then run `pnpm test`.
+
+Windows PowerShell: `Copy-Item .env.test.example .env.test`.
+
 | Endpoint                  | Purpose                                   |
 | ------------------------- | ----------------------------------------- |
 | `GET /api/v1/health/live` | Liveness: the process is up               |

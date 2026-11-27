@@ -15,5 +15,7 @@ One file per significant decision: context, options, decision, consequences. Num
 | 009 | TypeScript everywhere                      | Accepted |
 | 010 | pnpm workspaces monorepo                   | Accepted |
 | 011 | Prisma as the ORM                          | Accepted |
-
-Still to write: 012 error handling and error codes, 013 testing strategy (selective TDD), 014 scene backgrounds as looping video served from storage, 015 deployment target.
+| 012 | One error type and one error handler       | Accepted |
+| 013 | Selective test-first and real dependencies | Accepted |
+| 014 | Ambient scene backgrounds as looping video | Accepted |
+| 015 | Deployment target for the walking skeleton | Proposed |
