@@ -34,8 +34,8 @@ erDiagram
         uuid id PK
         string name
         string category
-        string asset_url
-        string thumbnail_url
+        string asset_key
+        string thumbnail_key
         string ambient_audio_url "optional loop"
         string license_note
     }

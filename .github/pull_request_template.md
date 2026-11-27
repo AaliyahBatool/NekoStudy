@@ -1,4 +1,4 @@
-﻿## Summary
+## Summary
 
 <!-- Briefly explain what this PR does and why. -->
 
