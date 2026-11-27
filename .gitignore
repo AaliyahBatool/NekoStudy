@@ -15,3 +15,5 @@ apps/api/.cursor/
 apps/api/.devin/
 apps/api/.windsurf/
 apps/api/skills-lock.json
+
+/apps/api/public/scenes-assets/
