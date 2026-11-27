@@ -1,26 +1,12 @@
+import type { MemberStatus, RoomSnapshot, TimerMode } from '@nekostudy/shared';
 
-import type {
-  MemberStatus,
-  RoomSnapshot,
-  TimerMode,
-} from "@nekostudy/shared";
+import { prisma } from '../../lib/db.js';
+import { redis } from '../../lib/redis.js';
+import { presenceKeys } from '../presence/keys.js';
 
-import { prisma } from "../../lib/db.js";
-import { redis } from "../../lib/redis.js";
-import { presenceKeys } from "../presence/keys.js";
+const VALID_STATUSES = new Set<MemberStatus>(['focusing', 'break', 'away']);
 
-const VALID_STATUSES = new Set<MemberStatus>([
-  "focusing",
-  "break",
-  "away",
-]);
-
-const VALID_TIMER_MODES = new Set<TimerMode>([
-  "idle",
-  "focus",
-  "short_break",
-  "long_break",
-]);
+const VALID_TIMER_MODES = new Set<TimerMode>(['idle', 'focus', 'short_break', 'long_break']);
 
 interface ChatMessage {
   id: string;
@@ -35,13 +21,13 @@ function parseChatMessage(value: string): ChatMessage | null {
     const parsed: unknown = JSON.parse(value);
 
     if (
-      typeof parsed !== "object" ||
+      typeof parsed !== 'object' ||
       parsed === null ||
-      !("id" in parsed) ||
-      !("userId" in parsed) ||
-      !("displayName" in parsed) ||
-      !("text" in parsed) ||
-      !("createdAt" in parsed)
+      !('id' in parsed) ||
+      !('userId' in parsed) ||
+      !('displayName' in parsed) ||
+      !('text' in parsed) ||
+      !('createdAt' in parsed)
     ) {
       return null;
     }
@@ -49,11 +35,11 @@ function parseChatMessage(value: string): ChatMessage | null {
     const message = parsed as Record<string, unknown>;
 
     if (
-      typeof message.id !== "string" ||
-      typeof message.userId !== "string" ||
-      typeof message.displayName !== "string" ||
-      typeof message.text !== "string" ||
-      typeof message.createdAt !== "string"
+      typeof message.id !== 'string' ||
+      typeof message.userId !== 'string' ||
+      typeof message.displayName !== 'string' ||
+      typeof message.text !== 'string' ||
+      typeof message.createdAt !== 'string'
     ) {
       return null;
     }
@@ -70,9 +56,7 @@ function parseChatMessage(value: string): ChatMessage | null {
   }
 }
 
-export async function getRoomSnapshot(
-  roomId: string,
-): Promise<RoomSnapshot> {
+export async function getRoomSnapshot(roomId: string): Promise<RoomSnapshot> {
   const room = await prisma.room.findUnique({
     where: { id: roomId },
     select: {
@@ -100,10 +84,7 @@ export async function getRoomSnapshot(
       },
 
       agendaItems: {
-        orderBy: [
-          { position: "asc" },
-          { createdAt: "asc" },
-        ],
+        orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
         select: {
           id: true,
           text: true,
@@ -116,28 +97,18 @@ export async function getRoomSnapshot(
   });
 
   if (!room) {
-    throw new Error("Room disappeared while building snapshot");
+    throw new Error('Room disappeared while building snapshot');
   }
 
-  const [
-    presenceEntries,
-    statuses,
-    agendaVersionValue,
-    chatEntries,
-  ] = await Promise.all([
-    redis.zrange(
-      presenceKeys.roomUsers(roomId),
-      0,
-      -1,
-      "WITHSCORES",
-    ),
+  const [presenceEntries, statuses, agendaVersionValue, chatEntries] = await Promise.all([
+    redis.zrange(presenceKeys.roomUsers(roomId), 0, -1, 'WITHSCORES'),
     redis.hgetall(presenceKeys.roomStatuses(roomId)),
     redis.get(presenceKeys.roomAgendaVersion(roomId)),
     redis.lrange(presenceKeys.roomChat(roomId), -50, -1),
   ]);
 
   if (presenceEntries.length % 2 !== 0) {
-    throw new Error("Invalid room presence sorted-set data");
+    throw new Error('Invalid room presence sorted-set data');
   }
 
   const presentUsers = [];
@@ -147,7 +118,7 @@ export async function getRoomSnapshot(
     const joinedAtMs = Number(presenceEntries[index + 1]);
 
     if (!userId || !Number.isFinite(joinedAtMs)) {
-      throw new Error("Invalid room presence entry");
+      throw new Error('Invalid room presence entry');
     }
 
     presentUsers.push({ userId, joinedAtMs });
@@ -165,22 +136,18 @@ export async function getRoomSnapshot(
     },
   });
 
-  const displayNames = new Map(
-    users.map((user) => [user.id, user.displayName]),
-  );
+  const displayNames = new Map(users.map((user) => [user.id, user.displayName]));
 
   // Preserve Redis sorted-set order: earliest join first.
   // Ignore stale presence entries for deleted users.
-  const members: RoomSnapshot["members"] = presentUsers
+  const members: RoomSnapshot['members'] = presentUsers
     .filter((member) => displayNames.has(member.userId))
     .map((member) => {
       const storedStatus = statuses[member.userId];
 
-      const status: MemberStatus = VALID_STATUSES.has(
-        storedStatus as MemberStatus,
-      )
+      const status: MemberStatus = VALID_STATUSES.has(storedStatus as MemberStatus)
         ? (storedStatus as MemberStatus)
-        : "focusing";
+        : 'focusing';
 
       return {
         userId: member.userId,
@@ -193,17 +160,15 @@ export async function getRoomSnapshot(
   // The owner is always host while present.
   // Otherwise, the earliest-joined present member is host.
   const hostId =
-    members.find((member) => member.userId === room.ownerId)?.userId ??
-    members[0]?.userId ??
-    null;
+    members.find((member) => member.userId === room.ownerId)?.userId ?? members[0]?.userId ?? null;
 
-  const timerMode = room.timer?.mode ?? "idle";
+  const timerMode = room.timer?.mode ?? 'idle';
 
   if (!VALID_TIMER_MODES.has(timerMode as TimerMode)) {
     throw new Error(`Invalid persisted timer mode: ${timerMode}`);
   }
 
-  const timer: RoomSnapshot["timer"] = {
+  const timer: RoomSnapshot['timer'] = {
     mode: timerMode as TimerMode,
     startedAt: room.timer?.startedAt?.toISOString() ?? null,
     durationMs: room.timer?.durationMs ?? null,
@@ -219,10 +184,10 @@ export async function getRoomSnapshot(
     },
   };
 
-  const agendaVersion = Number(agendaVersionValue ?? "0");
+  const agendaVersion = Number(agendaVersionValue ?? '0');
 
   if (!Number.isSafeInteger(agendaVersion) || agendaVersion < 0) {
-    throw new Error("Invalid room agenda version");
+    throw new Error('Invalid room agenda version');
   }
 
   const chat: ChatMessage[] = chatEntries

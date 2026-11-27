@@ -101,14 +101,16 @@ erDiagram
 ```
 
 ## What changed from v0.1
+
 - **Removed:** `MESSAGES` (chat is Redis), `ACTIVE_TIMERS` (timer now belongs to the room), `SOUND_LAYERS`, `SOUND_PRESETS`, `PRESET_LAYERS` (mixer is a later version), `is_default`, `is_private`, `deleted_at`, `role` on members
 - **Added:** `ROOM_TIMERS`, `AGENDA_ITEMS`, `NOTES`, timer durations on `ROOMS`
 - **`ROOMS.owner_id` is no longer unique:** a user can own several rooms (limit 5, checked in a transaction). Zero is allowed after deletes.
 - **Roles:** owner = `ROOMS.owner_id`. Host is derived from presence at runtime, so it is not a column.
 
 ## Design notes
+
 1. **Timer = timestamps.** Remaining = `duration - (now - started_at) - accumulated pauses`. Late joiners, refreshes and second devices all compute the same answer. `version` stops an old update from overwriting a newer one after a reconnect.
-2. **Timer writes are cheap and rare.** Only state *changes* (start, pause, reset, skip) are written, never per-second ticks.
+2. **Timer writes are cheap and rare.** Only state _changes_ (start, pause, reset, skip) are written, never per-second ticks.
 3. **Study sessions are written per member** when a focus block completes while they were present. Stats and streaks are computed from this table with the user's timezone; no streak column.
 4. **Delete rules:** room deletion cascades to members, invites, timer, agenda. Sessions survive with `room_id = null`.
 5. **Member cap (50)** must be enforced in a transaction, because two people can join at the same instant.

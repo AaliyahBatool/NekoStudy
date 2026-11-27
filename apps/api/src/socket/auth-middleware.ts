@@ -1,8 +1,8 @@
-import * as cookie from "cookie";
-import type { AppSocket } from "../types/socket.js";
+import * as cookie from 'cookie';
+import type { AppSocket } from '../types/socket.js';
 
-import { ACCESS_TOKEN_COOKIE_NAME } from "../constants/auth.js";
-import { verifyToken } from "../lib/auth.js";
+import { ACCESS_TOKEN_COOKIE_NAME } from '../constants/auth.js';
+import { verifyToken } from '../lib/auth.js';
 
 export async function authenticateSocket(
   socket: AppSocket,
@@ -10,13 +10,13 @@ export async function authenticateSocket(
 ): Promise<void> {
   try {
     // Read the HTTP Cookie header sent during the Socket.IO handshake.
-    const cookies = cookie.parseCookie(socket.handshake.headers.cookie ?? "");
+    const cookies = cookie.parseCookie(socket.handshake.headers.cookie ?? '');
 
     // Extract the HTTP-only access token.
     const token = cookies[ACCESS_TOKEN_COOKIE_NAME];
 
     if (!token) {
-      next(new Error("UNAUTHENTICATED"));
+      next(new Error('UNAUTHENTICATED'));
       return;
     }
 
@@ -24,7 +24,7 @@ export async function authenticateSocket(
     const payload = await verifyToken(token);
 
     if (!payload) {
-      next(new Error("UNAUTHENTICATED"));
+      next(new Error('UNAUTHENTICATED'));
       return;
     }
 
@@ -33,6 +33,6 @@ export async function authenticateSocket(
 
     next();
   } catch {
-    next(new Error("UNAUTHENTICATED"));
+    next(new Error('UNAUTHENTICATED'));
   }
 }

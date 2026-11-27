@@ -1,22 +1,15 @@
+import type { AppSocket, AppSocketServer } from '../../types/socket.js';
 
-import type { AppSocket, AppSocketServer } from "../../types/socket.js";
+import { logger } from '../../lib/logger.js';
+import { getRoomSnapshot } from '../../services/rooms/room-snapshot.js';
+import { getRoomJoinContext, RoomJoinError } from '../../services/rooms/room-join.js';
+import { joinRoomPresence } from '../../services/presence/room-presence.js';
+import { roomJoinSchema } from '../schemas/room-join.js';
+import { withUserLock } from '../../services/presence/user-lock.js';
 
-import { logger } from "../../lib/logger.js";
-import { getRoomSnapshot } from "../../services/rooms/room-snapshot.js";
-import {
-  getRoomJoinContext,
-  RoomJoinError,
-} from "../../services/rooms/room-join.js";
-import { joinRoomPresence } from "../../services/presence/room-presence.js";
-import { roomJoinSchema } from "../schemas/room-join.js";
-import { withUserLock } from "../../services/presence/user-lock.js";
-
-export function registerRoomJoinHandler(
-  io: AppSocketServer,
-  socket: AppSocket,
-): void {
-  socket.on("room:join", (payload, ack) => {
-    if (typeof ack !== "function") return;
+export function registerRoomJoinHandler(io: AppSocketServer, socket: AppSocket): void {
+  socket.on('room:join', (payload, ack) => {
+    if (typeof ack !== 'function') return;
 
     void (async () => {
       const result = roomJoinSchema.safeParse(payload);
@@ -25,8 +18,8 @@ export function registerRoomJoinHandler(
         ack({
           ok: false,
           error: {
-            code: "INVALID_PAYLOAD",
-            message: "Invalid room join payload",
+            code: 'INVALID_PAYLOAD',
+            message: 'Invalid room join payload',
           },
         });
         return;
@@ -38,8 +31,8 @@ export function registerRoomJoinHandler(
         ack({
           ok: false,
           error: {
-            code: "UNAUTHENTICATED",
-            message: "Authentication required",
+            code: 'UNAUTHENTICATED',
+            message: 'Authentication required',
           },
         });
         return;
@@ -48,10 +41,7 @@ export function registerRoomJoinHandler(
       try {
         await withUserLock(userId, async () => {
           // 1. Verify room access and load persisted room settings.
-          const context = await getRoomJoinContext(
-            result.data.roomId,
-            userId,
-          );
+          const context = await getRoomJoinContext(result.data.roomId, userId);
 
           // 2. Update Redis presence atomically.
           const presence = await joinRoomPresence({
@@ -61,23 +51,23 @@ export function registerRoomJoinHandler(
             maxMembers: context.room.maxMembers,
           });
 
-          if (presence.status === "room_full") {
+          if (presence.status === 'room_full') {
             ack({
               ok: false,
               error: {
-                code: "ROOM_FULL",
-                message: "This room has reached its member limit",
+                code: 'ROOM_FULL',
+                message: 'This room has reached its member limit',
               },
             });
             return;
           }
 
-          if (presence.status === "not_connected") {
+          if (presence.status === 'not_connected') {
             ack({
               ok: false,
               error: {
-                code: "UNAUTHENTICATED",
-                message: "Socket presence is not registered",
+                code: 'UNAUTHENTICATED',
+                message: 'Socket presence is not registered',
               },
             });
             return;
@@ -87,28 +77,26 @@ export function registerRoomJoinHandler(
           const targetRoom = `room:${context.room.id}`;
 
           // 3. Move every tab belonging to this user when necessary.
-          if (presence.status === "joined" && presence.previousRoomId) {
-            await io
-              .in(userRoom)
-              .socketsLeave(`room:${presence.previousRoomId}`);
+          if (presence.status === 'joined' && presence.previousRoomId) {
+            io.in(userRoom).socketsLeave(`room:${presence.previousRoomId}`);
           }
 
           // Also handles a newly connected tab joining an existing room.
-          await io.in(userRoom).socketsJoin(targetRoom);
+          io.in(userRoom).socketsJoin(targetRoom);
 
           // 4. Notify the previous room when this user moved.
-          if (presence.status === "joined" && presence.previousRoomId) {
-            io.to(`room:${presence.previousRoomId}`).emit("presence:left", {
+          if (presence.status === 'joined' && presence.previousRoomId) {
+            io.to(`room:${presence.previousRoomId}`).emit('presence:left', {
               userId,
             });
           }
 
           // 5. Notify the target room only for a genuine new presence entry.
-          if (presence.status === "joined") {
-            io.to(targetRoom).except(userRoom).emit("presence:joined", {
+          if (presence.status === 'joined') {
+            io.to(targetRoom).except(userRoom).emit('presence:joined', {
               userId,
               displayName: context.displayName,
-              status: "focusing",
+              status: 'focusing',
               joinedAt: presence.joinedAt.toISOString(),
             });
           }
@@ -116,7 +104,7 @@ export function registerRoomJoinHandler(
           // 6. Broadcast each host transition exactly once,
           // after all of the user's sockets have moved.
           for (const change of presence.hostChanges) {
-            io.to(`room:${change.roomId}`).emit("host:changed", {
+            io.to(`room:${change.roomId}`).emit('host:changed', {
               roomId: change.roomId,
               hostId: change.hostId,
             });
@@ -126,7 +114,7 @@ export function registerRoomJoinHandler(
           const snapshot = await getRoomSnapshot(context.room.id);
 
           // 8. Update all tabs belonging to this user.
-          io.to(userRoom).emit("room:snapshot", snapshot);
+          io.to(userRoom).emit('room:snapshot', snapshot);
 
           // 9. Return the snapshot to the requesting tab.
           ack({
@@ -146,16 +134,13 @@ export function registerRoomJoinHandler(
           return;
         }
 
-        logger.error(
-          { err: error, userId, socketId: socket.id },
-          "Room join failed",
-        );
+        logger.error({ err: error, userId, socketId: socket.id }, 'Room join failed');
 
         ack({
           ok: false,
           error: {
-            code: "INTERNAL",
-            message: "An unexpected error occurred",
+            code: 'INTERNAL',
+            message: 'An unexpected error occurred',
           },
         });
       }

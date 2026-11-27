@@ -1,5 +1,5 @@
-import { redis } from "../../lib/redis.js";
-import { presenceKeys, PRESENCE_PREFIX } from "./keys.js";
+import { redis } from '../../lib/redis.js';
+import { presenceKeys, PRESENCE_PREFIX } from './keys.js';
 
 export interface HostTransition {
   roomId: string;
@@ -9,35 +9,35 @@ export interface HostTransition {
 
 export type RoomJoinResult =
   | {
-      status: "joined";
+      status: 'joined';
       previousRoomId: string | null;
       joinedAt: Date;
       hostChanges: HostTransition[];
     }
   | {
-      status: "already_present";
+      status: 'already_present';
       previousRoomId: null;
       hostChanges: [];
     }
   | {
-      status: "room_full";
+      status: 'room_full';
       previousRoomId: null;
       hostChanges: [];
     }
   | {
-      status: "not_connected";
+      status: 'not_connected';
       previousRoomId: null;
       hostChanges: [];
     };
 
 export type RoomLeaveResult =
   | {
-      status: "left";
+      status: 'left';
       roomId: string;
       hostChange: HostTransition | null;
     }
   | {
-      status: "not_in_room";
+      status: 'not_in_room';
     };
 
 const joinRoomScript = `
@@ -182,7 +182,7 @@ export async function joinRoomPresence(input: {
     input.roomId,
     joinedAt,
     input.maxMembers,
-    "focusing",
+    'focusing',
     PRESENCE_PREFIX,
     input.ownerId,
   )) as string[];
@@ -196,7 +196,7 @@ export async function joinRoomPresence(input: {
     targetHostAfter,
   ] = result;
 
-  if (status === "not_connected") {
+  if (status === 'not_connected') {
     return {
       status,
       previousRoomId: null,
@@ -204,7 +204,7 @@ export async function joinRoomPresence(input: {
     };
   }
 
-  if (status === "room_full") {
+  if (status === 'room_full') {
     return {
       status,
       previousRoomId: null,
@@ -212,7 +212,7 @@ export async function joinRoomPresence(input: {
     };
   }
 
-  if (status === "already_present") {
+  if (status === 'already_present') {
     return {
       status,
       previousRoomId: null,
@@ -239,11 +239,11 @@ export async function joinRoomPresence(input: {
   }
 
   return {
-  status: "joined",
-  previousRoomId: previousRoomId || null,
-  joinedAt: new Date(joinedAt),
-  hostChanges,
-};
+    status: 'joined',
+    previousRoomId: previousRoomId || null,
+    joinedAt: new Date(joinedAt),
+    hostChanges,
+  };
 }
 
 const leaveRoomScript = `
@@ -290,9 +290,7 @@ const leaveRoomScript = `
   return { "left", roomId, hostBefore, hostAfter }
 `;
 
-export async function leaveRoomPresence(
-  userId: string,
-): Promise<RoomLeaveResult> {
+export async function leaveRoomPresence(userId: string): Promise<RoomLeaveResult> {
   const result = (await redis.eval(
     leaveRoomScript,
     2,
@@ -304,12 +302,12 @@ export async function leaveRoomPresence(
 
   const [status, roomId, previousHostId, hostId] = result;
 
-  if (status !== "left" || !roomId) {
-    return { status: "not_in_room" };
+  if (status !== 'left' || !roomId) {
+    return { status: 'not_in_room' };
   }
 
   return {
-    status: "left",
+    status: 'left',
     roomId,
     hostChange:
       previousHostId !== hostId

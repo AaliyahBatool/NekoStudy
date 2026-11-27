@@ -8,9 +8,18 @@
   "scripts": {
     "build": "pnpm --filter @nekostudy/shared build && pnpm --filter @nekostudy/api build && pnpm --filter @nekostudy/web build",
     "dev": "pnpm --parallel -r dev",
-    "typecheck": "pnpm --filter @nekostudy/shared build && pnpm --filter @nekostudy/api typecheck && pnpm --filter @nekostudy/web typecheck"
+    "typecheck": "pnpm --filter @nekostudy/shared build && pnpm --filter @nekostudy/api typecheck && pnpm --filter @nekostudy/web typecheck",
+    "lint": "eslint . --ext .js,.mjs,.cjs,.ts,.tsx",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "devDependencies": {
-    "typescript": "5.9.3"
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.15.0",
+    "eslint-config-prettier": "^10.1.9",
+    "globals": "^17.14.0",
+    "prettier": "^3.10.1",
+    "typescript": "5.9.3",
+    "typescript-eslint": "^8.74.0"
   }
 }

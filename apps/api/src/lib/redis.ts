@@ -1,7 +1,7 @@
-import { Redis } from "ioredis";
+import { Redis } from 'ioredis';
 
-import { env } from "../config/env.js";
-import { logger } from "./logger.js";
+import { env } from '../config/env.js';
+import { logger } from './logger.js';
 
 const ERROR_LOG_INTERVAL_MS = 30_000;
 
@@ -16,7 +16,7 @@ export const redis = new Redis(env.REDIS_URL, {
   },
 });
 
-redis.on("error", (error: Error) => {
+redis.on('error', (error: Error) => {
   const now = Date.now();
 
   if (now - lastErrorLogAt < ERROR_LOG_INTERVAL_MS) {
@@ -29,7 +29,7 @@ redis.on("error", (error: Error) => {
       err: error,
       suppressedErrors: suppressedErrorCount,
     },
-    "Redis connection error",
+    'Redis connection error',
   );
 
   lastErrorLogAt = now;

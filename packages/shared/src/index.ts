@@ -4,4 +4,4 @@ export interface User {
   email: string;
 }
 
-export * from "./socket.js";
+export * from './socket.js';

@@ -63,23 +63,23 @@ pnpm --filter @nekostudy/api dev
 
 Check it: `GET http://localhost:4000/api/v1/health` should return `{ "status": "ok", "database": "connected", "redis": "connected" }`.
 
-| Endpoint | Purpose |
-|---|---|
-| `GET /api/v1/health/live` | Liveness: the process is up |
-| `GET /api/v1/health` | Readiness: PostgreSQL and Redis reachable |
+| Endpoint                  | Purpose                                   |
+| ------------------------- | ----------------------------------------- |
+| `GET /api/v1/health/live` | Liveness: the process is up               |
+| `GET /api/v1/health`      | Readiness: PostgreSQL and Redis reachable |
 
 Other useful commands: `pnpm typecheck`, `pnpm build`, `docker compose down` (keeps data), `docker compose down -v` (deletes data).
 
 ## Documentation
 
-| Doc | What's in it |
-|---|---|
-| [SRS](docs/srs.md) | Scope, requirements, rules, NFRs |
-| [Data model](docs/er-diagram.md) | ER diagram and design notes |
-| [REST API](docs/rest-api.md) | Endpoints, errors, security |
-| [WebSocket events](docs/websocket-events.md) | Real-time event catalog, roles, sequences |
-| [ADRs](docs/adr) | Why each major decision was made |
-| [Setup checklist](docs/setup-checklist.md) | Build-order plan from empty repo to deployed skeleton |
+| Doc                                          | What's in it                                          |
+| -------------------------------------------- | ----------------------------------------------------- |
+| [SRS](docs/srs.md)                           | Scope, requirements, rules, NFRs                      |
+| [Data model](docs/er-diagram.md)             | ER diagram and design notes                           |
+| [REST API](docs/rest-api.md)                 | Endpoints, errors, security                           |
+| [WebSocket events](docs/websocket-events.md) | Real-time event catalog, roles, sequences             |
+| [ADRs](docs/adr)                             | Why each major decision was made                      |
+| [Setup checklist](docs/setup-checklist.md)   | Build-order plan from empty repo to deployed skeleton |
 
 ## Architecture rules
 

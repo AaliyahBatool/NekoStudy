@@ -1,10 +1,6 @@
-
 const userLocks = new Map<string, Promise<void>>();
 
-export async function withUserLock<T>(
-  userId: string,
-  operation: () => Promise<T>,
-): Promise<T> {
+export async function withUserLock<T>(userId: string, operation: () => Promise<T>): Promise<T> {
   const previous = userLocks.get(userId) ?? Promise.resolve();
 
   let release!: () => void;

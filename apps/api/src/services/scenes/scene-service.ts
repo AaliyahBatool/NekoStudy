@@ -1,11 +1,11 @@
-import { prisma } from "../../lib/db.js";
-import { env } from "../../config/env.js";
+import { prisma } from '../../lib/db.js';
+import { env } from '../../config/env.js';
 
 function resolveAssetUrl(key: string): string {
-  return `${env.ASSET_BASE_URL.replace(/\/+$/, "")}/${key
-    .split("/")
+  return `${env.ASSET_BASE_URL.replace(/\/+$/, '')}/${key
+    .split('/')
     .map(encodeURIComponent)
-    .join("/")}`;
+    .join('/')}`;
 }
 
 function toSceneResponse(scene: {
@@ -27,7 +27,7 @@ function toSceneResponse(scene: {
 export async function listScenes(category?: string) {
   const scenes = await prisma.scene.findMany({
     where: category ? { category } : undefined,
-    orderBy: { name: "asc" },
+    orderBy: { name: 'asc' },
     select: {
       id: true,
       name: true,

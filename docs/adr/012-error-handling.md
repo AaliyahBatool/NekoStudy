@@ -6,11 +6,13 @@
 **Context:** The API has many endpoints and a socket layer. If every handler formats its own errors, clients can't rely on a shape, internal details leak, and unexpected failures look different from expected ones.
 
 **Options considered**
+
 1. Each route catches errors and sends its own response
 2. Return result objects (`{ ok, error }`) from services and branch on them everywhere
 3. Services throw typed errors; one middleware turns them into responses
 
 **Decision:** Option 3.
+
 - `AppError(code, httpStatus, message, details?)` in `lib/errors.ts`, with stable codes from the REST spec (`NOT_FOUND`, `VALIDATION_ERROR`, `ROOM_FULL`, ...).
 - Services throw `AppError`. Controllers do not catch; Express 5 forwards errors from async handlers automatically.
 - One error-handling middleware, registered last, always responds with `{ "error": { "code", "message", "details" } }`.
@@ -20,6 +22,7 @@
 - Sockets use the same code vocabulary, returned in acks as `{ ok: false, error: { code, message } }` (the shared `SocketErrorCode` type), not thrown.
 
 **Consequences**
+
 - (+) Clients write one error parser; every failure is predictable
 - (+) Business rules throw where they are checked, so services stay readable
 - (+) Internal details are not exposed, and every 500 is traceable by request ID in the logs
