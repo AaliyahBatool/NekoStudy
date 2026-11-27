@@ -1,4 +1,3 @@
-
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { AppSocket } from '../types/socket.js';
@@ -25,6 +24,15 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
+function expectUnauthenticated(next: ReturnType<typeof vi.fn>): void {
+  expect(next).toHaveBeenCalledOnce();
+
+  const error: unknown = next.mock.calls[0]?.[0];
+
+  expect(error).toBeInstanceOf(Error);
+  expect((error as Error).message).toBe('UNAUTHENTICATED');
+}
+
 describe('Socket authentication middleware', () => {
   it('rejects a handshake without an access-token cookie', async () => {
     const socket = createSocket();
@@ -32,9 +40,8 @@ describe('Socket authentication middleware', () => {
 
     await authenticateSocket(socket, next);
 
-    expect(next).toHaveBeenCalledOnce();
     expect(next).toHaveBeenCalledWith(expect.any(Error));
-    expect(next.mock.calls[0]?.[0]?.message).toBe('UNAUTHENTICATED');
+    expectUnauthenticated(next);
     expect(verifyToken).not.toHaveBeenCalled();
     expect(socket.data.userId).toBeUndefined();
   });
@@ -48,8 +55,7 @@ describe('Socket authentication middleware', () => {
     await authenticateSocket(socket, next);
 
     expect(verifyToken).toHaveBeenCalledWith('invalid-token');
-    expect(next).toHaveBeenCalledOnce();
-    expect(next.mock.calls[0]?.[0]?.message).toBe('UNAUTHENTICATED');
+    expectUnauthenticated(next);
     expect(socket.data.userId).toBeUndefined();
   });
 
@@ -61,8 +67,7 @@ describe('Socket authentication middleware', () => {
 
     await authenticateSocket(socket, next);
 
-    expect(next).toHaveBeenCalledOnce();
-    expect(next.mock.calls[0]?.[0]?.message).toBe('UNAUTHENTICATED');
+    expectUnauthenticated(next);
     expect(socket.data.userId).toBeUndefined();
   });
 
@@ -74,6 +79,6 @@ describe('Socket authentication middleware', () => {
 
     expect(verifyToken).not.toHaveBeenCalled();
     expect(next).toHaveBeenCalledOnce();
-    expect(next.mock.calls[0]?.[0]?.message).toBe('UNAUTHENTICATED');
+    expectUnauthenticated(next);
   });
 });

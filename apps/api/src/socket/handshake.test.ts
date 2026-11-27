@@ -1,25 +1,36 @@
-
 import { createServer } from 'node:http';
 
 import { Server as SocketIOServer } from 'socket.io';
 import { io as createClient } from 'socket.io-client';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { authenticateSocket } from './auth-middleware.js';
-import type { AppSocket } from '../types/socket.js';
+import type {
+  ClientToServerEvents,
+  InterServerEvents,
+  ServerToClientEvents,
+} from '@nekostudy/shared';
+import type { SocketData } from '../types/socket.js';
 
-let ioServer: SocketIOServer | undefined;
+import { authenticateSocket } from './auth-middleware.js';
+
+type TestSocketServer = SocketIOServer<
+  ClientToServerEvents,
+  ServerToClientEvents,
+  InterServerEvents,
+  SocketData
+>;
+
+let ioServer: TestSocketServer | undefined;
 let client: ReturnType<typeof createClient> | undefined;
 
 afterEach(async () => {
-  client?.close();
-  client = undefined;
+  if (client) {
+    client.close();
+    client = undefined;
+  }
 
   if (ioServer) {
-    await new Promise<void>((resolve) => {
-      ioServer!.close(() => resolve());
-    });
-
+    await ioServer.close();
     ioServer = undefined;
   }
 });
@@ -28,10 +39,15 @@ describe('Socket.IO handshake', () => {
   it('rejects a client that connects without an access token cookie', async () => {
     const httpServer = createServer();
 
-    ioServer = new SocketIOServer(httpServer);
+    ioServer = new SocketIOServer<
+      ClientToServerEvents,
+      ServerToClientEvents,
+      InterServerEvents,
+      SocketData
+    >(httpServer);
 
     ioServer.use((socket, next) => {
-      void authenticateSocket(socket as unknown as AppSocket, next);
+      void authenticateSocket(socket, next);
     });
 
     await new Promise<void>((resolve, reject) => {
@@ -52,14 +68,16 @@ describe('Socket.IO handshake', () => {
       timeout: 5_000,
     });
 
+    const socketClient = client;
+
     const connectionError = new Promise<Error>((resolve, reject) => {
-      client!.once('connect_error', resolve);
-      client!.once('connect', () => {
+      socketClient.once('connect_error', resolve);
+      socketClient.once('connect', () => {
         reject(new Error('Expected the unauthenticated connection to be rejected'));
       });
     });
 
-    client.connect();
+    void socketClient.connect();
 
     const error = await connectionError;
 

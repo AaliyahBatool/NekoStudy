@@ -13,7 +13,7 @@ export interface SocketError {
   message: string;
 }
 
-export type SocketAck<T extends object = Record<string, never>> =
+export type SocketAck<T extends object = object> =
   ({ ok: true } & T) | { ok: false; error: SocketError };
 // -----------------------------------------------
 // TIME SYNCHRONIZATION
