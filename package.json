@@ -12,7 +12,7 @@
     "lint": "eslint . --ext .js,.mjs,.cjs,.ts,.tsx",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "pnpm --filter @nekostudy/api test",
+    "test": "pnpm --filter @nekostudy/api test && pnpm --filter @nekostudy/web test",
     "prepare": "husky"
   },
   "devDependencies": {
